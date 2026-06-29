@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Activity,
   ArrowLeft,
   BarChart3,
   Droplets,
@@ -22,6 +21,7 @@ import { CITIES, getCity, type Kpi, type Status } from "../data/cityData";
 import type { ParamKey } from "../data/legendRamps";
 import AnimatedCounter from "../components/common/AnimatedCounter";
 import ResizableSplit from "../components/common/ResizableSplit";
+import { Wordmark, CornerLogo } from "../components/common/Brand";
 import MapView from "../components/map/MapView";
 
 const PARAMETERS: {
@@ -136,18 +136,11 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1220] text-slate-200">
+      <CornerLogo />
       {/* ---------- Sidebar ---------- */}
       <aside className="flex w-72 flex-col border-r border-white/10 bg-[#0d1526]/80">
-        <div className="flex items-center gap-2.5 px-5 py-5">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-400/15 ring-1 ring-amber-300/30">
-            <Activity className="h-4.5 w-4.5 text-amber-300" />
-          </span>
-          <span
-            style={{ fontFamily: "var(--font-display)" }}
-            className="font-semibold text-slate-50"
-          >
-            ClimateLens <span className="text-amber-300">India</span>
-          </span>
+        <div className="px-5 py-5">
+          <Wordmark />
         </div>
 
         {/* cities */}

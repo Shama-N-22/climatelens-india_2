@@ -48,9 +48,10 @@ export default function MapView({
 
   const basemap = BASEMAPS.find((b) => b.id === basemapId) ?? DEFAULT_BASEMAP;
 
-  // overlay only applies to Ahmedabad + flood/ndwi indices
+  // overlay only applies to Ahmedabad + the indices we have rasters for
   const overlayApplies =
-    cityId === "ahmedabad" && (parameter === "flood" || parameter === "ndwi");
+    cityId === "ahmedabad" &&
+    (parameter === "ndvi" || parameter === "ndbi" || parameter === "ndwi");
 
   return (
     <div className="relative h-full w-full">
@@ -71,6 +72,7 @@ export default function MapView({
         <FlyToCity center={center} zoom={zoom} />
 
         <AhmedabadFloodOverlay
+          parameter={parameter}
           visible={overlayVisible && overlayApplies}
           opacity={overlayOpacity}
         />

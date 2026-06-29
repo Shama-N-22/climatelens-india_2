@@ -1,6 +1,6 @@
 // File: src/pages/Landing.tsx
 import { useNavigate } from "react-router-dom";
-import { motion, type Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   Satellite,
@@ -8,10 +8,10 @@ import {
   Thermometer,
   Leaf,
   ChevronDown,
-  Activity,
 } from "lucide-react";
 import LandingBackground from "../components/landing/LandingBackground";
 import AnimatedCounter from "../components/common/AnimatedCounter";
+import { Wordmark } from "../components/common/Brand";
 
 const STATS = [
   { value: 3, suffix: "", label: "Cities monitored", decimals: 0 },
@@ -21,25 +21,38 @@ const STATS = [
 ];
 
 const MODULES = [
-  { icon: Droplets, title: "Flood Forecast", note: "Drainage · elevation · runoff", color: "text-sky-300" },
-  { icon: Thermometer, title: "Urban Heat", note: "Surface temperature islands", color: "text-amber-300" },
-  { icon: Leaf, title: "Vegetation", note: "NDVI canopy health", color: "text-emerald-300" },
-  { icon: Satellite, title: "Built-up & Water", note: "NDBI · NDWI change", color: "text-teal-300" },
+  {
+    icon: Droplets,
+    title: "Flood Forecast",
+    note: "Drainage · elevation · runoff",
+    color: "text-sky-300",
+  },
+  {
+    icon: Thermometer,
+    title: "Urban Heat",
+    note: "Surface temperature islands",
+    color: "text-amber-300",
+  },
+  {
+    icon: Leaf,
+    title: "Vegetation",
+    note: "NDVI canopy health",
+    color: "text-emerald-300",
+  },
+  {
+    icon: Satellite,
+    title: "Built-up & Water",
+    note: "NDBI · NDWI change",
+    color: "text-teal-300",
+  },
 ];
 
-const fadeUp: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 24,
-  },
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
   show: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: {
-      delay: 0.15 + i * 0.08,
-      duration: 0.6,
-      ease: [0.25, 0.1, 0.25, 1] as const,
-    },
+    transition: { delay: 0.15 + i * 0.08, duration: 0.6, ease: "easeOut" },
   }),
 };
 
@@ -49,24 +62,24 @@ export default function Landing() {
   return (
     <LandingBackground imageOpacity={0.34}>
       {/* ambient floating glow lights */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+      >
         <div className="absolute -left-24 top-24 h-72 w-72 rounded-full bg-amber-500/20 blur-3xl animate-[pulseGlow_4s_ease-in-out_infinite]" />
         <div className="absolute right-0 top-1/3 h-80 w-80 rounded-full bg-teal-500/20 blur-3xl animate-[pulseGlow_5s_ease-in-out_infinite]" />
       </div>
 
       {/* nav */}
       <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-amber-400/15 ring-1 ring-amber-300/30">
-            <Activity className="h-5 w-5 text-amber-300" />
-          </span>
-          <span style={{ fontFamily: "var(--font-display)" }} className="text-lg font-semibold tracking-tight text-slate-50">
-            ClimateLens <span className="text-amber-300">India</span>
-          </span>
-        </div>
+        <Wordmark showLogo />
         <nav className="hidden items-center gap-8 text-sm text-slate-300 md:flex">
-          <a className="transition hover:text-white" href="#modules">Platform</a>
-          <a className="transition hover:text-white" href="#stats">Coverage</a>
+          <a className="transition hover:text-white" href="#modules">
+            Platform
+          </a>
+          <a className="transition hover:text-white" href="#stats">
+            Coverage
+          </a>
           <button
             onClick={() => navigate("/dashboard")}
             className="rounded-lg border border-white/15 px-4 py-1.5 text-slate-100 transition hover:border-amber-300/50 hover:text-amber-200"
@@ -114,8 +127,9 @@ export default function Landing() {
           animate="show"
           className="mt-6 max-w-xl text-lg leading-relaxed text-slate-300/90"
         >
-          Satellite-derived flood, heat, vegetation and water indices for India's
-          fastest-growing cities — fused into one decision-ready operations dashboard.
+          Satellite-derived flood, heat, vegetation and water indices for
+          India's fastest-growing cities — fused into one decision-ready
+          operations dashboard.
         </motion.p>
 
         <motion.div
@@ -141,7 +155,10 @@ export default function Landing() {
         </motion.div>
 
         {/* floating climate cards */}
-        <div id="modules" className="mt-20 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div
+          id="modules"
+          className="mt-20 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
           {MODULES.map((m, i) => (
             <motion.div
               key={m.title}
@@ -154,10 +171,16 @@ export default function Landing() {
               style={{ animation: `float ${6 + i}s ease-in-out infinite` }}
             >
               <m.icon className={`h-6 w-6 ${m.color}`} />
-              <h3 style={{ fontFamily: "var(--font-display)" }} className="mt-4 text-base font-semibold text-slate-50">
+              <h3
+                style={{ fontFamily: "var(--font-display)" }}
+                className="mt-4 text-base font-semibold text-slate-50"
+              >
                 {m.title}
               </h3>
-              <p style={{ fontFamily: "var(--font-mono)" }} className="mt-1 text-xs text-slate-400">
+              <p
+                style={{ fontFamily: "var(--font-mono)" }}
+                className="mt-1 text-xs text-slate-400"
+              >
                 {m.note}
               </p>
             </motion.div>
@@ -165,7 +188,10 @@ export default function Landing() {
         </div>
 
         {/* stats */}
-        <div id="stats" className="mt-20 grid w-full grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/5 lg:grid-cols-4">
+        <div
+          id="stats"
+          className="mt-20 grid w-full grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/5 lg:grid-cols-4"
+        >
           {STATS.map((s) => (
             <div key={s.label} className="bg-[#0b1220]/60 p-6 backdrop-blur-sm">
               <AnimatedCounter
@@ -174,7 +200,10 @@ export default function Landing() {
                 decimals={s.decimals}
                 className="block text-3xl font-bold text-white md:text-4xl"
               />
-              <span style={{ fontFamily: "var(--font-mono)" }} className="mt-2 block text-xs uppercase tracking-wider text-slate-400">
+              <span
+                style={{ fontFamily: "var(--font-mono)" }}
+                className="mt-2 block text-xs uppercase tracking-wider text-slate-400"
+              >
                 {s.label}
               </span>
             </div>

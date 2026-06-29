@@ -1,12 +1,13 @@
 // File: src/pages/Analytics.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, LineChart, GitCompare, BookOpen, Activity } from "lucide-react";
+import { ArrowLeft, LineChart, GitCompare, BookOpen } from "lucide-react";
 import { CITIES, getCity } from "../data/cityData";
 import AnalyticsCharts from "../components/charts/AnalyticsCharts";
 import TimelineScrubber from "../components/analytics/TimelineScrubber";
 import CompareCities from "../components/analytics/CompareCities";
 import ExportBar from "../components/analytics/ExportBar";
+import { Wordmark, CornerLogo } from "../components/common/Brand";
 
 type Tab = "trends" | "compare" | "method";
 
@@ -27,6 +28,7 @@ export default function Analytics() {
 
   return (
     <div className="min-h-screen bg-[#0b1220] text-slate-200">
+      <CornerLogo />
       {/* header */}
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0b1220]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
@@ -37,11 +39,8 @@ export default function Analytics() {
             >
               <ArrowLeft className="h-4 w-4" /> Dashboard
             </button>
-            <span className="hidden items-center gap-2 sm:flex">
-              <Activity className="h-4 w-4 text-amber-300" />
-              <span style={{ fontFamily: "var(--font-display)" }} className="font-semibold text-slate-50">
-                Analytics
-              </span>
+            <span className="hidden sm:flex">
+              <Wordmark />
             </span>
           </div>
 
@@ -83,10 +82,16 @@ export default function Analytics() {
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-5 sm:px-6">
         {tab === "trends" && (
           <>
-            <TimelineScrubber year={year} onYear={setYear} playing={playing} onPlaying={setPlaying} />
+            <TimelineScrubber
+              year={year}
+              onYear={setYear}
+              playing={playing}
+              onPlaying={setPlaying}
+            />
             <p className="px-1 text-sm text-slate-400">
-              Showing <span className="text-slate-100">{city.name}</span> · {city.state} for{" "}
-              <span className="text-amber-300">{year}</span>. Drag the timeline or press play to animate.
+              Showing <span className="text-slate-100">{city.name}</span> ·{" "}
+              {city.state} for <span className="text-amber-300">{year}</span>.
+              Drag the timeline or press play to animate.
             </p>
             <AnalyticsCharts cityId={cityId} year={year} />
           </>
@@ -96,24 +101,44 @@ export default function Analytics() {
 
         {tab === "method" && (
           <div className="max-w-3xl space-y-4 rounded-2xl border border-white/10 bg-[#0f1a2e]/70 p-6">
-            <h2 style={{ fontFamily: "var(--font-display)" }} className="text-lg font-semibold text-slate-50">
+            <h2
+              style={{ fontFamily: "var(--font-display)" }}
+              className="text-lg font-semibold text-slate-50"
+            >
               Methodology
             </h2>
             <p className="text-sm leading-relaxed text-slate-300">
-              ClimateLens derives each index from multi-temporal satellite imagery and
-              ground-station reference data, resampled to a common grid and classified into
-              comparable severity bands.
+              ClimateLens derives each index from multi-temporal satellite
+              imagery and ground-station reference data, resampled to a common
+              grid and classified into comparable severity bands.
             </p>
             <ul className="space-y-2 text-sm text-slate-300">
-              <li><span className="text-teal-300">Flood</span> — rainfall, drainage density, elevation (DEM) and runoff combined into a susceptibility surface.</li>
-              <li><span className="text-amber-300">LST</span> — thermal-band land surface temperature highlighting urban heat islands.</li>
-              <li><span className="text-emerald-300">NDVI</span> — red / near-infrared ratio for vegetation health and canopy density.</li>
-              <li><span className="text-slate-300">NDBI</span> — short-wave infrared ratio detecting built-up expansion.</li>
-              <li><span className="text-sky-300">NDWI</span> — green / NIR ratio mapping surface water and moisture.</li>
+              <li>
+                <span className="text-teal-300">Flood</span> — rainfall,
+                drainage density, elevation (DEM) and runoff combined into a
+                susceptibility surface.
+              </li>
+              <li>
+                <span className="text-amber-300">LST</span> — thermal-band land
+                surface temperature highlighting urban heat islands.
+              </li>
+              <li>
+                <span className="text-emerald-300">NDVI</span> — red /
+                near-infrared ratio for vegetation health and canopy density.
+              </li>
+              <li>
+                <span className="text-slate-300">NDBI</span> — short-wave
+                infrared ratio detecting built-up expansion.
+              </li>
+              <li>
+                <span className="text-sky-300">NDWI</span> — green / NIR ratio
+                mapping surface water and moisture.
+              </li>
             </ul>
             <p className="rounded-lg border border-amber-300/20 bg-amber-400/5 p-3 text-xs text-amber-200/90">
-              Note: figures shown in this build are representative synthetic data for
-              demonstration. Production deployment ingests live satellite and sensor feeds.
+              Note: figures shown in this build are representative synthetic
+              data for demonstration. Production deployment ingests live
+              satellite and sensor feeds.
             </p>
           </div>
         )}
