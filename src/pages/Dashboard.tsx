@@ -1,0 +1,392 @@
+// File: src/pages/Dashboard.tsx
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Activity,
+  ArrowLeft,
+  BarChart3,
+  Droplets,
+  Thermometer,
+  Leaf,
+  Building2,
+  Waves,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Sparkles,
+  AlertTriangle,
+  Search,
+} from "lucide-react";
+import { CITIES, getCity, type Kpi, type Status } from "../data/cityData";
+import type { ParamKey } from "../data/legendRamps";
+import AnimatedCounter from "../components/common/AnimatedCounter";
+import ResizableSplit from "../components/common/ResizableSplit";
+import MapView from "../components/map/MapView";
+
+const PARAMETERS: {
+  key: ParamKey;
+  label: string;
+  icon: typeof Droplets;
+  blurb: string;
+}[] = [
+  {
+    key: "flood",
+    label: "Flood",
+    icon: Droplets,
+    blurb: "Susceptibility from rainfall, drainage, elevation & runoff.",
+  },
+  {
+    key: "lst",
+    label: "LST",
+    icon: Thermometer,
+    blurb: "Land surface temperature & urban heat islands.",
+  },
+  {
+    key: "ndvi",
+    label: "NDVI",
+    icon: Leaf,
+    blurb: "Vegetation health and canopy density.",
+  },
+  {
+    key: "ndbi",
+    label: "NDBI",
+    icon: Building2,
+    blurb: "Built-up area and urban expansion.",
+  },
+  {
+    key: "ndwi",
+    label: "NDWI",
+    icon: Waves,
+    blurb: "Surface water and moisture detection.",
+  },
+];
+
+const STATUS_STYLES: Record<
+  Status,
+  { dot: string; text: string; ring: string }
+> = {
+  good: {
+    dot: "bg-emerald-400",
+    text: "text-emerald-300",
+    ring: "ring-emerald-400/20",
+  },
+  watch: { dot: "bg-sky-400", text: "text-sky-300", ring: "ring-sky-400/20" },
+  warn: {
+    dot: "bg-amber-400",
+    text: "text-amber-300",
+    ring: "ring-amber-400/20",
+  },
+  critical: {
+    dot: "bg-rose-500",
+    text: "text-rose-300",
+    ring: "ring-rose-500/20",
+  },
+};
+
+function TrendIcon({ trend }: { trend: Kpi["trend"] }) {
+  if (trend === "up") return <TrendingUp className="h-3.5 w-3.5" />;
+  if (trend === "down") return <TrendingDown className="h-3.5 w-3.5" />;
+  return <Minus className="h-3.5 w-3.5" />;
+}
+
+function KpiCard({ kpi, index }: { kpi: Kpi; index: number }) {
+  const s = STATUS_STYLES[kpi.status];
+  const compact = kpi.value >= 100000;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04, duration: 0.35 }}
+      className={`rounded-xl border border-white/10 bg-[#0f1a2e]/70 p-3.5 ring-1 ${s.ring} transition hover:border-white/20`}
+    >
+      <div className="flex items-center justify-between">
+        <span
+          style={{ fontFamily: "var(--font-mono)" }}
+          className="text-[10px] uppercase tracking-wider text-slate-400"
+        >
+          {kpi.label}
+        </span>
+        <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+      </div>
+      <div className="mt-2 flex items-baseline gap-1">
+        <AnimatedCounter
+          value={compact ? kpi.value / 1000000 : kpi.value}
+          decimals={compact ? 2 : (kpi.decimals ?? 0)}
+          suffix={compact ? "M" : kpi.unit}
+          className="text-xl font-bold text-slate-50"
+        />
+      </div>
+      <div className={`mt-1.5 flex items-center gap-1 text-[11px] ${s.text}`}>
+        <TrendIcon trend={kpi.trend} />
+        <span style={{ fontFamily: "var(--font-mono)" }}>{kpi.delta}</span>
+      </div>
+    </motion.div>
+  );
+}
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const [cityId, setCityId] = useState(CITIES[0].id);
+  const [parameter, setParameter] = useState<ParamKey>("flood");
+
+  const city = useMemo(() => getCity(cityId), [cityId]);
+  const insight = city.insights[parameter];
+  const activeParam = PARAMETERS.find((p) => p.key === parameter)!;
+
+  return (
+    <div className="flex h-screen w-full overflow-hidden bg-[#0b1220] text-slate-200">
+      {/* ---------- Sidebar ---------- */}
+      <aside className="flex w-72 flex-col border-r border-white/10 bg-[#0d1526]/80">
+        <div className="flex items-center gap-2.5 px-5 py-5">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-400/15 ring-1 ring-amber-300/30">
+            <Activity className="h-4.5 w-4.5 text-amber-300" />
+          </span>
+          <span
+            style={{ fontFamily: "var(--font-display)" }}
+            className="font-semibold text-slate-50"
+          >
+            ClimateLens <span className="text-amber-300">India</span>
+          </span>
+        </div>
+
+        {/* cities */}
+        <div className="px-5 pb-3 pt-2">
+          <p
+            style={{ fontFamily: "var(--font-mono)" }}
+            className="mb-2 text-[10px] uppercase tracking-widest text-slate-500"
+          >
+            Cities
+          </p>
+          <div className="space-y-1">
+            {CITIES.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setCityId(c.id)}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
+                  c.id === cityId
+                    ? "bg-amber-400/10 text-amber-200 ring-1 ring-amber-300/30"
+                    : "text-slate-300 hover:bg-white/5"
+                }`}
+              >
+                <span>{c.name}</span>
+                <span
+                  style={{ fontFamily: "var(--font-mono)" }}
+                  className="text-[10px] text-slate-500"
+                >
+                  {c.state}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* parameters */}
+        <div className="px-5 py-3">
+          <p
+            style={{ fontFamily: "var(--font-mono)" }}
+            className="mb-2 text-[10px] uppercase tracking-widest text-slate-500"
+          >
+            Index
+          </p>
+          <div className="space-y-1">
+            {PARAMETERS.map((p) => {
+              const active = p.key === parameter;
+              return (
+                <button
+                  key={p.key}
+                  onClick={() => setParameter(p.key)}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+                    active
+                      ? "bg-teal-400/10 text-teal-200 ring-1 ring-teal-300/30"
+                      : "text-slate-300 hover:bg-white/5"
+                  }`}
+                >
+                  <p.icon className="h-4 w-4" />
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-3 px-1 text-xs leading-relaxed text-slate-500">
+            {activeParam.blurb}
+          </p>
+        </div>
+
+        <div className="mt-auto border-t border-white/10 p-4">
+          <button
+            onClick={() => navigate("/")}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to home
+          </button>
+        </div>
+      </aside>
+
+      {/* ---------- Main ---------- */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* topbar */}
+        <header className="flex items-center justify-between border-b border-white/10 px-6 py-3.5">
+          <div>
+            <h1
+              style={{ fontFamily: "var(--font-display)" }}
+              className="text-lg font-semibold text-slate-50"
+            >
+              {city.name}{" "}
+              <span className="text-slate-500">/ {activeParam.label}</span>
+            </h1>
+            <p
+              style={{ fontFamily: "var(--font-mono)" }}
+              className="text-[11px] text-slate-500"
+            >
+              {city.center[0].toFixed(3)}°N, {city.center[1].toFixed(3)}°E ·
+              live
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-400">
+              <Search className="h-4 w-4" />
+              <input
+                placeholder="Search ward, lake, river…"
+                className="w-44 bg-transparent text-slate-200 placeholder:text-slate-500 focus:outline-none"
+              />
+            </div>
+            <button
+              onClick={() => navigate("/analytics")}
+              className="flex items-center gap-2 rounded-lg bg-teal-400/10 px-3 py-2 text-sm font-medium text-teal-200 ring-1 ring-teal-300/30 transition hover:bg-teal-400/20"
+            >
+              <BarChart3 className="h-4 w-4" /> Analytics
+            </button>
+          </div>
+        </header>
+
+        {/* resizable content: map panel (left) | analytics panel (right) */}
+        <div className="flex-1 overflow-hidden p-4">
+          <ResizableSplit
+            storageKey="cl-analytics-width"
+            minRight={320}
+            maxRight={680}
+            defaultRight={420}
+            left={
+              <div className="flex h-full flex-col gap-4 pr-4">
+                <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                  {city.kpis.slice(0, 8).map((k, i) => (
+                    <KpiCard key={k.key + cityId} kpi={k} index={i} />
+                  ))}
+                </div>
+                <div className="relative flex-1 overflow-hidden rounded-2xl border border-white/10">
+                  <MapView
+                    parameter={parameter}
+                    center={city.center}
+                    zoom={city.zoom}
+                    cityId={city.id}
+                  />
+                </div>
+              </div>
+            }
+            right={
+              <div className="flex h-full flex-col gap-4 pl-1">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={cityId + parameter}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="rounded-2xl border border-white/10 bg-gradient-to-b from-teal-500/[0.07] to-transparent p-5"
+                  >
+                    <div className="mb-3 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-teal-300" />
+                      <span
+                        style={{ fontFamily: "var(--font-display)" }}
+                        className="text-sm font-semibold text-slate-50"
+                      >
+                        AI Insight
+                      </span>
+                      <span className="ml-auto rounded-full bg-teal-400/10 px-2 py-0.5 text-[10px] text-teal-200">
+                        {insight.confidence}% conf.
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed text-slate-300">
+                      {insight.summary}
+                    </p>
+                    <div className="mt-3 rounded-lg border border-white/10 bg-[#0b1220]/60 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wider text-amber-300/80">
+                        Recommendation
+                      </p>
+                      <p className="mt-1 text-sm text-slate-200">
+                        {insight.recommendation}
+                      </p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                      {[
+                        { l: "Priority", v: insight.priority },
+                        { l: "Budget", v: insight.budget },
+                        { l: "Impact", v: insight.improvement },
+                      ].map((x) => (
+                        <div key={x.l} className="rounded-lg bg-white/5 p-2">
+                          <p
+                            style={{ fontFamily: "var(--font-mono)" }}
+                            className="text-[9px] uppercase tracking-wider text-slate-500"
+                          >
+                            {x.l}
+                          </p>
+                          <p className="mt-0.5 text-xs font-semibold text-slate-100">
+                            {x.v}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+
+                <div className="rounded-2xl border border-white/10 bg-[#0f1a2e]/70 p-5">
+                  <div className="mb-3 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-300" />
+                    <span
+                      style={{ fontFamily: "var(--font-display)" }}
+                      className="text-sm font-semibold text-slate-50"
+                    >
+                      Live Alerts
+                    </span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {city.alerts.map((a) => {
+                      const s = STATUS_STYLES[a.severity];
+                      return (
+                        <div
+                          key={a.id + cityId}
+                          className="rounded-lg border border-white/5 bg-[#0b1220]/50 p-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`flex items-center gap-2 text-sm font-medium ${s.text}`}
+                            >
+                              <span
+                                className={`h-1.5 w-1.5 rounded-full ${s.dot}`}
+                              />
+                              {a.title}
+                            </span>
+                            <span
+                              style={{ fontFamily: "var(--font-mono)" }}
+                              className="text-[10px] text-slate-500"
+                            >
+                              {a.time}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                            {a.message}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
