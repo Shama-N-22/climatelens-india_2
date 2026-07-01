@@ -29,13 +29,18 @@ export default function ResizableSplit({
   const containerRef = useRef<HTMLDivElement>(null);
   const clamp = useCallback(
     (w: number) => Math.min(Math.max(w, minRight), maxRight),
-    [minRight, maxRight]
+    [minRight, maxRight],
   );
 
   const [rightWidth, setRightWidth] = useState<number>(() => {
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
+    const saved =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(storageKey)
+        : null;
     const n = saved ? parseInt(saved, 10) : NaN;
-    return Number.isFinite(n) ? Math.min(Math.max(n, minRight), maxRight) : defaultRight;
+    return Number.isFinite(n)
+      ? Math.min(Math.max(n, minRight), maxRight)
+      : defaultRight;
   });
   const [dragging, setDragging] = useState(false);
 
@@ -46,7 +51,7 @@ export default function ResizableSplit({
       const rect = el.getBoundingClientRect();
       setRightWidth(clamp(rect.right - clientX));
     },
-    [clamp]
+    [clamp],
   );
 
   useEffect(() => {
@@ -74,9 +79,9 @@ export default function ResizableSplit({
   }, [rightWidth, storageKey]);
 
   return (
-    <div ref={containerRef} className="flex h-full w-full overflow-hidden">
+    <div ref={containerRef} className="flex w-full items-stretch">
       {/* LEFT — flexible (map) */}
-      <div className="min-w-0 flex-1 overflow-hidden">{left}</div>
+      <div className="min-w-0 flex-1">{left}</div>
 
       {/* DIVIDER */}
       <div
@@ -99,8 +104,11 @@ export default function ResizableSplit({
 
       {/* RIGHT — resizable (analytics) */}
       <div
-        style={{ width: rightWidth, transition: dragging ? "none" : "width 120ms ease" }}
-        className="shrink-0 overflow-y-auto"
+        style={{
+          width: rightWidth,
+          transition: dragging ? "none" : "width 120ms ease",
+        }}
+        className="shrink-0"
       >
         {right}
       </div>

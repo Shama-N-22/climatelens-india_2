@@ -16,6 +16,8 @@ import {
   Sparkles,
   AlertTriangle,
   Search,
+  Flame,
+  X,
 } from "lucide-react";
 import { CITIES, getCity, type Kpi, type Status } from "../data/cityData";
 import type { ParamKey } from "../data/legendRamps";
@@ -31,34 +33,28 @@ const PARAMETERS: {
   blurb: string;
 }[] = [
   {
-    key: "flood",
-    label: "Flood",
-    icon: Droplets,
-    blurb: "Susceptibility from rainfall, drainage, elevation & runoff.",
-  },
-  {
     key: "lst",
-    label: "LST",
+    label: "Land Surface Temperature",
     icon: Thermometer,
     blurb: "Land surface temperature & urban heat islands.",
   },
   {
     key: "ndvi",
-    label: "NDVI",
+    label: "Vegetation Index",
     icon: Leaf,
     blurb: "Vegetation health and canopy density.",
   },
   {
-    key: "ndbi",
-    label: "NDBI",
-    icon: Building2,
-    blurb: "Built-up area and urban expansion.",
-  },
-  {
     key: "ndwi",
-    label: "NDWI",
+    label: "Water Index",
     icon: Waves,
     blurb: "Surface water and moisture detection.",
+  },
+  {
+    key: "ndbi",
+    label: "Built-up Index",
+    icon: Building2,
+    blurb: "Built-up area and urban expansion.",
   },
 ];
 
@@ -84,51 +80,139 @@ const STATUS_STYLES: Record<
   },
 };
 
+const STATUS_LABEL: Record<Status, string> = {
+  good: "Healthy",
+  watch: "Watch",
+  warn: "Warning",
+  critical: "Critical",
+};
+
+const KPI_DETAILS: Record<string, string> = {
+  pop: "Estimated population living within the city boundary.",
+  temp: "Current ambient air temperature across the city.",
+  humidity: "Relative humidity in the air right now.",
+  rain: "Rainfall accumulated over the last 24 hours.",
+  flood: "Composite flood-risk score from rainfall, drainage and elevation.",
+  aqi: "Air Quality Index — higher values mean more polluted air.",
+  veg: "Share of the area under healthy vegetation cover.",
+  reservoir: "Current reservoir storage against full capacity.",
+};
+
 function TrendIcon({ trend }: { trend: Kpi["trend"] }) {
   if (trend === "up") return <TrendingUp className="h-3.5 w-3.5" />;
   if (trend === "down") return <TrendingDown className="h-3.5 w-3.5" />;
   return <Minus className="h-3.5 w-3.5" />;
 }
 
-function KpiCard({ kpi, index }: { kpi: Kpi; index: number }) {
+function KpiCard({
+  kpi,
+  index,
+  onOpen,
+}: {
+  kpi: Kpi;
+  index: number;
+  onOpen: (k: Kpi) => void;
+}) {
   const s = STATUS_STYLES[kpi.status];
   const compact = kpi.value >= 100000;
   return (
-    <motion.div
+    <motion.button
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.35 }}
-      className={`rounded-xl border border-white/10 bg-[#0f1a2e]/70 p-3.5 ring-1 ${s.ring} transition hover:border-white/20`}
+      onClick={() => onOpen(kpi)}
+      className={`rounded-lg border border-white/10 bg-[#0f1a2e]/70 p-2.5 text-left ring-1 ${s.ring} transition hover:border-white/25`}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-1">
         <span
           style={{ fontFamily: "var(--font-mono)" }}
-          className="text-[10px] uppercase tracking-wider text-slate-400"
+          className="truncate text-[9px] uppercase tracking-wider text-slate-400"
         >
           {kpi.label}
         </span>
-        <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${s.dot}`} />
       </div>
-      <div className="mt-2 flex items-baseline gap-1">
+      <div className="mt-1.5">
         <AnimatedCounter
           value={compact ? kpi.value / 1000000 : kpi.value}
           decimals={compact ? 2 : (kpi.decimals ?? 0)}
           suffix={compact ? "M" : kpi.unit}
-          className="text-xl font-bold text-slate-50"
+          className="block truncate whitespace-nowrap text-sm font-bold text-slate-50"
         />
       </div>
-      <div className={`mt-1.5 flex items-center gap-1 text-[11px] ${s.text}`}>
-        <TrendIcon trend={kpi.trend} />
-        <span style={{ fontFamily: "var(--font-mono)" }}>{kpi.delta}</span>
-      </div>
-    </motion.div>
+    </motion.button>
+  );
+}
+
+function KpiModal({ kpi, onClose }: { kpi: Kpi; onClose: () => void }) {
+  const s = STATUS_STYLES[kpi.status];
+  const compact = kpi.value >= 100000;
+  const val = (compact ? kpi.value / 1000000 : kpi.value).toLocaleString(
+    "en-IN",
+    {
+      minimumFractionDigits: compact ? 2 : (kpi.decimals ?? 0),
+      maximumFractionDigits: compact ? 2 : (kpi.decimals ?? 0),
+    },
+  );
+  return (
+    <div
+      className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-72 rounded-2xl border border-white/10 bg-[#0f1a2e] p-5 shadow-2xl"
+      >
+        <div className="flex items-start justify-between">
+          <span
+            style={{ fontFamily: "var(--font-mono)" }}
+            className="text-[10px] uppercase tracking-widest text-slate-400"
+          >
+            {kpi.label}
+          </span>
+          <button
+            onClick={onClose}
+            className="text-slate-400 transition hover:text-slate-200"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-2 text-3xl font-bold text-slate-50">
+          {val}
+          {compact ? "M" : kpi.unit}
+        </div>
+        <div className={`mt-2 flex items-center gap-1.5 text-sm ${s.text}`}>
+          <TrendIcon trend={kpi.trend} />
+          <span style={{ fontFamily: "var(--font-mono)" }}>{kpi.delta}</span>
+          <span className="text-slate-500">
+            {kpi.trend === "up"
+              ? "vs last period ↑"
+              : kpi.trend === "down"
+                ? "vs last period ↓"
+                : "steady"}
+          </span>
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-slate-400">
+          {KPI_DETAILS[kpi.key] ?? ""}
+        </p>
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
+          <span className={`h-2 w-2 rounded-full ${s.dot}`} />
+          <span className="text-xs text-slate-300">
+            Status: {STATUS_LABEL[kpi.status]}
+          </span>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [cityId, setCityId] = useState(CITIES[0].id);
-  const [parameter, setParameter] = useState<ParamKey>("flood");
+  const [parameter, setParameter] = useState<ParamKey>("ndvi");
+  const [popupKpi, setPopupKpi] = useState<Kpi | null>(null);
 
   const city = useMemo(() => getCity(cityId), [cityId]);
   const insight = city.insights[parameter];
@@ -180,7 +264,7 @@ export default function Dashboard() {
             style={{ fontFamily: "var(--font-mono)" }}
             className="mb-2 text-[10px] uppercase tracking-widest text-slate-500"
           >
-            Index
+            Indices
           </p>
           <div className="space-y-1">
             {PARAMETERS.map((p) => {
@@ -189,14 +273,14 @@ export default function Dashboard() {
                 <button
                   key={p.key}
                   onClick={() => setParameter(p.key)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${
                     active
                       ? "bg-teal-400/10 text-teal-200 ring-1 ring-teal-300/30"
                       : "text-slate-300 hover:bg-white/5"
                   }`}
                 >
-                  <p.icon className="h-4 w-4" />
-                  {p.label}
+                  <p.icon className="h-4 w-4 shrink-0" />
+                  <span className="leading-tight">{p.label}</span>
                 </button>
               );
             })}
@@ -204,6 +288,27 @@ export default function Dashboard() {
           <p className="mt-3 px-1 text-xs leading-relaxed text-slate-500">
             {activeParam.blurb}
           </p>
+        </div>
+
+        {/* analytics section */}
+        <div className="px-5 py-3">
+          <p
+            style={{ fontFamily: "var(--font-mono)" }}
+            className="mb-2 text-[10px] uppercase tracking-widest text-slate-500"
+          >
+            Analytics
+          </p>
+          <div className="space-y-1">
+            <button
+              onClick={() => {
+                /* TODO: wire UHI Dynamic Hotspot view */
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-white/5"
+            >
+              <Flame className="h-4 w-4 shrink-0" />
+              UHI Dynamic Hotspot
+            </button>
+          </div>
         </div>
 
         <div className="mt-auto border-t border-white/10 p-4">
@@ -217,9 +322,9 @@ export default function Dashboard() {
       </aside>
 
       {/* ---------- Main ---------- */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-y-auto">
         {/* topbar */}
-        <header className="flex items-center justify-between border-b border-white/10 px-6 py-3.5">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-[#0b1220] px-6 py-3.5">
           <div>
             <h1
               style={{ fontFamily: "var(--font-display)" }}
@@ -253,21 +358,26 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* resizable content: map panel (left) | analytics panel (right) */}
-        <div className="flex-1 overflow-hidden p-4">
+        {/* content: scrolls with the page (left + right together) */}
+        <div className="p-4">
           <ResizableSplit
             storageKey="cl-analytics-width"
             minRight={320}
             maxRight={680}
             defaultRight={420}
             left={
-              <div className="flex h-full flex-col gap-4 pr-4">
-                <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+              <div className="flex flex-col gap-4 pr-4">
+                <div className="grid w-1/2 grid-cols-4 gap-2.5">
                   {city.kpis.slice(0, 8).map((k, i) => (
-                    <KpiCard key={k.key + cityId} kpi={k} index={i} />
+                    <KpiCard
+                      key={k.key + cityId}
+                      kpi={k}
+                      index={i}
+                      onOpen={setPopupKpi}
+                    />
                   ))}
                 </div>
-                <div className="relative flex-1 overflow-hidden rounded-2xl border border-white/10">
+                <div className="relative h-[600px] overflow-hidden rounded-2xl border border-white/10">
                   <MapView
                     parameter={parameter}
                     center={city.center}
@@ -278,7 +388,7 @@ export default function Dashboard() {
               </div>
             }
             right={
-              <div className="flex h-full flex-col gap-4 pl-1">
+              <div className="flex flex-col gap-4 pl-1">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={cityId + parameter}
@@ -380,6 +490,10 @@ export default function Dashboard() {
           />
         </div>
       </div>
+
+      {popupKpi && (
+        <KpiModal kpi={popupKpi} onClose={() => setPopupKpi(null)} />
+      )}
     </div>
   );
 }
