@@ -1,14 +1,7 @@
 // File: src/data/basemaps.ts
-//
-// Selectable basemaps. CARTO Voyager stays the default (the look you liked).
-// "OpenStreetMap" is the real OSM standard tile service.
-//
-// The "* (Live)" entries stream live Google Earth Engine tiles for the three
-// city regions (Ahmedabad, Hyderabad, Mumbai).
-// ⚠ These GEE tile URLs contain a token that EXPIRES in ~1–2 days. When a
-//   live layer stops loading, re-run the GEE script, copy the fresh
-//   urlFormat, and replace the matching url string below.
+import type { ParamKey } from "./legendRamps";
 
+// Base map styles (chosen from the top-right switcher).
 export interface Basemap {
   id: string;
   label: string;
@@ -58,36 +51,18 @@ export const BASEMAPS: Basemap[] = [
     attribution: "Tiles &copy; Esri",
     maxZoom: 19,
   },
-
-  // ---- Live Google Earth Engine layers (June 2025) ----
-  {
-    id: "gee-lst",
-    label: "LST (Live)",
-    url: "https://earthengine.googleapis.com/v1/projects/argon-key-461118-u4/maps/17d7477ed09010852476bd39621fdd7a-705b1ef67d3069d04237c0c89ed9a0e8/tiles/{z}/{x}/{y}",
-    attribution: "Google Earth Engine &middot; Landsat",
-    maxZoom: 18,
-  },
-  {
-    id: "gee-ndvi",
-    label: "NDVI (Live)",
-    url: "https://earthengine.googleapis.com/v1/projects/argon-key-461118-u4/maps/85000db96e504dea9e3e02827f04ff73-024ff2f7b3f9de437eb45b4211b9180b/tiles/{z}/{x}/{y}",
-    attribution: "Google Earth Engine &middot; Landsat",
-    maxZoom: 18,
-  },
-  {
-    id: "gee-bi",
-    label: "Built-up (Live)",
-    url: "https://earthengine.googleapis.com/v1/projects/argon-key-461118-u4/maps/e03379828c7f10f3ffcaf140dc09fd67-6d109cda00eb34518659b7ebc561130b/tiles/{z}/{x}/{y}",
-    attribution: "Google Earth Engine &middot; Landsat",
-    maxZoom: 18,
-  },
-  {
-    id: "gee-wi",
-    label: "Water (Live)",
-    url: "https://earthengine.googleapis.com/v1/projects/argon-key-461118-u4/maps/2dc3bdbc4aaa7b1b11323983bf1f1be2-567d8b676f6772e49760bb984d5e19a4/tiles/{z}/{x}/{y}",
-    attribution: "Google Earth Engine &middot; Landsat",
-    maxZoom: 18,
-  },
 ];
 
 export const DEFAULT_BASEMAP = BASEMAPS[0];
+
+// ---- Live Google Earth Engine index layers, keyed by the sidebar index ----
+// Selecting an index in the sidebar shows the matching layer here, so the map
+// and the legend always agree.
+// ⚠ These GEE tile URLs carry a token that EXPIRES in ~1–2 days. When a layer
+//   stops loading, re-run the GEE script and replace the matching url below.
+export const GEE_TILE_URLS: Partial<Record<ParamKey, string>> = {
+  lst: "https://earthengine.googleapis.com/v1/projects/argon-key-461118-u4/maps/ae7bbbed6db1f34e70a85ac035c94aea-58e83d3b034aad8455fa65c25be3737f/tiles/{z}/{x}/{y}",
+  ndvi: "https://earthengine.googleapis.com/v1/projects/argon-key-461118-u4/maps/9822b8b1762abb6a2b50c29967e0ce36-401380742a813199bc7f1d6481699c9b/tiles/{z}/{x}/{y}",
+  ndbi: "https://earthengine.googleapis.com/v1/projects/argon-key-461118-u4/maps/e3f57d79ed211132c8e512d526d60cbd-d6a77d112d3dc33a4dc4f68182f8950a/tiles/{z}/{x}/{y}",
+  ndwi: "https://earthengine.googleapis.com/v1/projects/argon-key-461118-u4/maps/cc880c8541e5e095fad935b521c1dbde-8dbbbc30757399aad05384e2de80c78f/tiles/{z}/{x}/{y}",
+};
