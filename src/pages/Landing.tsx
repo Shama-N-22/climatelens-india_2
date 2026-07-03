@@ -1,6 +1,6 @@
 // File: src/pages/Landing.tsx
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -105,12 +105,19 @@ const SOCIALS = [
   },
 ];
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  show: (i: number) => ({
+const fadeUp: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 24,
+  },
+  show: (i: number = 0) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: 0.15 + i * 0.08, duration: 0.6, ease: "easeOut" },
+    transition: {
+      delay: 0.15 + i * 0.08,
+      duration: 0.6,
+      ease: "easeOut" as const,
+    },
   }),
 };
 
