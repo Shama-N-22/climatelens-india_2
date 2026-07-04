@@ -1,14 +1,17 @@
 // File: src/components/map/MapView.tsx
 //
-// Map panel. The sidebar index now drives BOTH the live GEE layer on the map
-// AND the legend, so they always match. An opacity slider controls how much
-// the base map shows through the index layer.
+// Map panel. Tile URLs now come from the backend (fresh, never-expiring) based
+// on the selected city + index + year + month. Shows loading / error / no-data
+// states gracefully. Everything else (basemap switcher, opacity, legend) stays.
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, ZoomControl, useMap } from "react-leaflet";
 import MapLegend from "../dashboard/MapLegend";
 import BasemapSwitcher from "./BasemapSwitcher";
-import { BASEMAPS, DEFAULT_BASEMAP, GEE_TILE_URLS } from "../../data/basemaps";
+import { BASEMAPS, DEFAULT_BASEMAP } from "../../data/basemaps";
+import { monthLabel, DEFAULT_TIMELINE } from "../../data/geeTimeline";
+import { API_BASE } from "../../config";
+import { Building2 } from "lucide-react";
 import type { ParamKey } from "../../data/legendRamps";
 import "leaflet/dist/leaflet.css";
 
@@ -18,7 +21,9 @@ interface MapViewProps {
   parameter?: ParamKey;
   center?: [number, number];
   zoom?: number;
-  cityId?: string; // accepted for compatibility; not used
+  cityId?: string;
+  year?: number;
+  month?: number;
 }
 
 function FlyToCity({
@@ -35,16 +40,69 @@ function FlyToCity({
   return null;
 }
 
+type Status = "loading" | "ok" | "empty" | "error";
+
 export default function MapView({
   parameter = "ndvi",
   center = DEFAULT_CENTER,
   zoom = 11,
+  cityId = "ahmedabad",
+  year = DEFAULT_TIMELINE.year,
+  month = DEFAULT_TIMELINE.month,
 }: MapViewProps) {
   const [basemapId, setBasemapId] = useState(DEFAULT_BASEMAP.id);
   const [opacity, setOpacity] = useState(0.75);
+  const [tileUrl, setTileUrl] = useState<string | null>(null);
+  const [status, setStatus] = useState<Status>("loading");
+  const [showBuildings, setShowBuildings] = useState(false);
+  const [buildingsUrl, setBuildingsUrl] = useState<string | null>(null);
 
   const basemap = BASEMAPS.find((b) => b.id === basemapId) ?? DEFAULT_BASEMAP;
-  const geeUrl = GEE_TILE_URLS[parameter]; // matches the selected sidebar index
+
+  // fetch the tile URL from the backend whenever the selection changes
+  useEffect(() => {
+    let cancelled = false;
+    setStatus("loading");
+    setTileUrl(null);
+
+    fetch(
+      `${API_BASE}/api/tiles/${parameter}?city=${cityId}&year=${year}&month=${month}`,
+    )
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (d && d.url) {
+          setTileUrl(d.url);
+          setStatus("ok");
+        } else {
+          setStatus("empty");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [parameter, cityId, year, month]);
+
+  // fetch building footprints once per city, only when toggled on
+  useEffect(() => {
+    if (!showBuildings) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/buildings?city=${cityId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d && d.url) setBuildingsUrl(d.url);
+      })
+      .catch(() => {
+        if (!cancelled) setBuildingsUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showBuildings, cityId]);
 
   return (
     <div className="relative h-full w-full">
@@ -54,7 +112,6 @@ export default function MapView({
         zoomControl={false}
         className="h-full w-full bg-[#0b1220]"
       >
-        {/* base map */}
         <TileLayer
           key={basemap.id}
           url={basemap.url}
@@ -63,11 +120,10 @@ export default function MapView({
           maxZoom={basemap.maxZoom ?? 19}
         />
 
-        {/* live GEE index layer, matched to the sidebar index */}
-        {geeUrl && (
+        {status === "ok" && tileUrl && (
           <TileLayer
-            key={parameter}
-            url={geeUrl}
+            key={`${cityId}-${parameter}-${year}-${month}`}
+            url={tileUrl}
             attribution="Google Earth Engine &middot; Landsat"
             opacity={opacity}
             zIndex={400}
@@ -75,12 +131,22 @@ export default function MapView({
           />
         )}
 
+        {showBuildings && buildingsUrl && (
+          <TileLayer
+            key={`buildings-${cityId}`}
+            url={buildingsUrl}
+            attribution="Google Open Buildings"
+            zIndex={500}
+            maxZoom={20}
+          />
+        )}
+
         <FlyToCity center={center} zoom={zoom} />
         <ZoomControl position="bottomright" />
       </MapContainer>
 
-      {/* top-left: layer opacity */}
-      {geeUrl && (
+      {/* opacity (only when a layer is showing) */}
+      {status === "ok" && (
         <div className="absolute left-4 top-4 z-[1000] w-56 rounded-xl border border-white/10 bg-[#0B1220]/80 p-3 shadow-xl backdrop-blur-md">
           <div className="mb-2 flex items-center justify-between">
             <span
@@ -107,12 +173,40 @@ export default function MapView({
         </div>
       )}
 
-      {/* top-right: base map style */}
-      <div className="absolute right-4 top-4 z-[1000]">
+      {/* status badge for loading / no-data / error */}
+      {status !== "ok" && (
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-[1000] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-[#0B1220]/85 px-4 py-3 text-center shadow-2xl backdrop-blur-md">
+          <p className="text-sm font-medium text-slate-100">
+            {monthLabel(month)} {year}
+          </p>
+          <p
+            style={{ fontFamily: "var(--font-mono)" }}
+            className="mt-1 text-[11px] text-slate-400"
+          >
+            {status === "loading" && "loading layer…"}
+            {status === "empty" && "no data for this month"}
+            {status === "error" && "backend not reachable"}
+          </p>
+        </div>
+      )}
+
+      {/* top-right: buildings toggle + base map style */}
+      <div className="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
+        <button
+          onClick={() => setShowBuildings((v) => !v)}
+          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-lg backdrop-blur-md transition ${
+            showBuildings
+              ? "border-orange-400/40 bg-orange-500/20 text-orange-200"
+              : "border-white/10 bg-[#0B1220]/85 text-slate-300 hover:border-white/25"
+          }`}
+        >
+          <Building2 className="h-4 w-4" />
+          Buildings
+        </button>
         <BasemapSwitcher value={basemapId} onChange={setBasemapId} />
       </div>
 
-      {/* bottom-right: dynamic legend (follows the same index) */}
+      {/* bottom-right: dynamic legend */}
       <div className="absolute bottom-6 right-4 z-[1000]">
         <MapLegend parameter={parameter} />
       </div>
