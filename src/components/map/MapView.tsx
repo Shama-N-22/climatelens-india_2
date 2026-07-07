@@ -1,8 +1,8 @@
 // File: src/components/map/MapView.tsx
 //
-// Map panel. Tile URLs now come from the backend (fresh, never-expiring) based
-// on the selected city + index + year + month. Shows loading / error / no-data
-// states gracefully. Everything else (basemap switcher, opacity, legend) stays.
+// Map panel. Index tiles + building footprints come live from the backend.
+// Buildings are controlled from the "Layers" dropdown in the top bar (passed
+// in via the showBuildings prop) and always render ABOVE the index layer.
 
 import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, ZoomControl, useMap } from "react-leaflet";
@@ -11,7 +11,6 @@ import BasemapSwitcher from "./BasemapSwitcher";
 import { BASEMAPS, DEFAULT_BASEMAP } from "../../data/basemaps";
 import { monthLabel, DEFAULT_TIMELINE } from "../../data/geeTimeline";
 import { API_BASE } from "../../config";
-import { Building2 } from "lucide-react";
 import type { ParamKey } from "../../data/legendRamps";
 import "leaflet/dist/leaflet.css";
 
@@ -24,6 +23,7 @@ interface MapViewProps {
   cityId?: string;
   year?: number;
   month?: number;
+  showBuildings?: boolean;
 }
 
 function FlyToCity({
@@ -49,22 +49,21 @@ export default function MapView({
   cityId = "ahmedabad",
   year = DEFAULT_TIMELINE.year,
   month = DEFAULT_TIMELINE.month,
+  showBuildings = false,
 }: MapViewProps) {
   const [basemapId, setBasemapId] = useState(DEFAULT_BASEMAP.id);
   const [opacity, setOpacity] = useState(0.75);
   const [tileUrl, setTileUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("loading");
-  const [showBuildings, setShowBuildings] = useState(false);
   const [buildingsUrl, setBuildingsUrl] = useState<string | null>(null);
 
   const basemap = BASEMAPS.find((b) => b.id === basemapId) ?? DEFAULT_BASEMAP;
 
-  // fetch the tile URL from the backend whenever the selection changes
+  // fetch the index tile URL whenever the selection changes
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
     setTileUrl(null);
-
     fetch(
       `${API_BASE}/api/tiles/${parameter}?city=${cityId}&year=${year}&month=${month}`,
     )
@@ -81,7 +80,6 @@ export default function MapView({
       .catch(() => {
         if (!cancelled) setStatus("error");
       });
-
     return () => {
       cancelled = true;
     };
@@ -145,7 +143,7 @@ export default function MapView({
         <ZoomControl position="bottomright" />
       </MapContainer>
 
-      {/* opacity (only when a layer is showing) */}
+      {/* opacity (only when an index layer is showing) */}
       {status === "ok" && (
         <div className="absolute left-4 top-4 z-[1000] w-56 rounded-xl border border-white/10 bg-[#0B1220]/80 p-3 shadow-xl backdrop-blur-md">
           <div className="mb-2 flex items-center justify-between">
@@ -184,35 +182,14 @@ export default function MapView({
             className="mt-1 text-[11px] text-slate-400"
           >
             {status === "loading" && "loading layer…"}
-            {status === "empty" && "no data for this month"}
+            {status === "empty" && "no cloud-free image for this month"}
             {status === "error" && "backend not reachable"}
           </p>
         </div>
       )}
 
-      {/* top-right: buildings toggle + base map style */}
-      <div className="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
-        <button
-          onClick={() => setShowBuildings((v) => !v)}
-          title="Show or hide building footprints"
-          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-lg backdrop-blur-md transition ${
-            showBuildings
-              ? "border-slate-300/40 bg-slate-200/15 text-slate-100"
-              : "border-white/10 bg-[#0B1220]/85 text-slate-300 hover:border-white/25"
-          }`}
-        >
-          <Building2 className="h-4 w-4" />
-          Buildings
-          <span
-            className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${
-              showBuildings
-                ? "bg-emerald-400/20 text-emerald-200"
-                : "bg-white/10 text-slate-400"
-            }`}
-          >
-            {showBuildings ? "ON" : "OFF"}
-          </span>
-        </button>
+      {/* top-right: base map style */}
+      <div className="absolute right-4 top-4 z-[1000]">
         <BasemapSwitcher value={basemapId} onChange={setBasemapId} />
       </div>
 

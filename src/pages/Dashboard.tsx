@@ -25,6 +25,7 @@ import AnimatedCounter from "../components/common/AnimatedCounter";
 import ResizableSplit from "../components/common/ResizableSplit";
 import { Wordmark, CornerLogo } from "../components/common/Brand";
 import TimelineSelector from "../components/map/TimelineSelector";
+import LayersMenu from "../components/map/LayersMenu";
 import { DEFAULT_TIMELINE } from "../data/geeTimeline";
 import MapView from "../components/map/MapView";
 
@@ -217,6 +218,7 @@ export default function Dashboard() {
   const [popupKpi, setPopupKpi] = useState<Kpi | null>(null);
   const [year, setYear] = useState(DEFAULT_TIMELINE.year);
   const [month, setMonth] = useState(DEFAULT_TIMELINE.month);
+  const [showBuildings, setShowBuildings] = useState(false);
 
   const city = useMemo(() => getCity(cityId), [cityId]);
   const insight = city.insights[parameter];
@@ -352,6 +354,10 @@ export default function Dashboard() {
               onYear={setYear}
               onMonth={setMonth}
             />
+            <LayersMenu
+              showBuildings={showBuildings}
+              onToggleBuildings={setShowBuildings}
+            />
             <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-400">
               <Search className="h-4 w-4" />
               <input
@@ -395,6 +401,7 @@ export default function Dashboard() {
                     cityId={city.id}
                     year={year}
                     month={month}
+                    showBuildings={showBuildings}
                   />
                 </div>
               </div>
