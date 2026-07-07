@@ -194,14 +194,24 @@ export default function MapView({
       <div className="absolute right-4 top-4 z-[1000] flex flex-col items-end gap-2">
         <button
           onClick={() => setShowBuildings((v) => !v)}
+          title="Show or hide building footprints"
           className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm shadow-lg backdrop-blur-md transition ${
             showBuildings
-              ? "border-orange-400/40 bg-orange-500/20 text-orange-200"
+              ? "border-slate-300/40 bg-slate-200/15 text-slate-100"
               : "border-white/10 bg-[#0B1220]/85 text-slate-300 hover:border-white/25"
           }`}
         >
           <Building2 className="h-4 w-4" />
           Buildings
+          <span
+            className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${
+              showBuildings
+                ? "bg-emerald-400/20 text-emerald-200"
+                : "bg-white/10 text-slate-400"
+            }`}
+          >
+            {showBuildings ? "ON" : "OFF"}
+          </span>
         </button>
         <BasemapSwitcher value={basemapId} onChange={setBasemapId} />
       </div>
