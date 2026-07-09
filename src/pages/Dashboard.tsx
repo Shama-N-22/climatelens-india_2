@@ -423,7 +423,7 @@ export default function Dashboard() {
                     showWards={showWards}
                     showHospitals={showHospitals}
                     onSelectFeature={setSelected}
-                    showUHI={showUHI}
+                    
                   />
                 </div>
               </div>
