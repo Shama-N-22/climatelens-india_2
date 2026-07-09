@@ -26,6 +26,9 @@ import ResizableSplit from "../components/common/ResizableSplit";
 import { Wordmark, CornerLogo } from "../components/common/Brand";
 import TimelineSelector from "../components/map/TimelineSelector";
 import LayersMenu from "../components/map/LayersMenu";
+import FeatureDetail, {
+  type SelectedFeature,
+} from "../components/dashboard/FeatureDetail";
 import { DEFAULT_TIMELINE } from "../data/geeTimeline";
 import MapView from "../components/map/MapView";
 
@@ -221,6 +224,7 @@ export default function Dashboard() {
   const [showBuildings, setShowBuildings] = useState(false);
   const [showHospitals, setShowHospitals] = useState(false);
   const [showWards, setShowWards] = useState(false);
+  const [selected, setSelected] = useState<SelectedFeature | null>(null);
 
   const city = useMemo(() => getCity(cityId), [cityId]);
   const insight = city.insights[parameter];
@@ -389,15 +393,18 @@ export default function Dashboard() {
             defaultRight={420}
             left={
               <div className="flex flex-col gap-4 pr-4">
-                <div className="grid w-1/2 grid-cols-4 gap-2.5">
-                  {city.kpis.slice(0, 8).map((k, i) => (
-                    <KpiCard
-                      key={k.key + cityId}
-                      kpi={k}
-                      index={i}
-                      onOpen={setPopupKpi}
-                    />
-                  ))}
+                <div className="flex gap-3">
+                  <div className="grid w-1/2 grid-cols-4 gap-2.5">
+                    {city.kpis.slice(0, 8).map((k, i) => (
+                      <KpiCard
+                        key={k.key + cityId}
+                        kpi={k}
+                        index={i}
+                        onOpen={setPopupKpi}
+                      />
+                    ))}
+                  </div>
+                  <FeatureDetail feature={selected} />
                 </div>
                 <div className="relative h-[600px] overflow-hidden rounded-2xl border border-white/10">
                   <MapView
@@ -410,6 +417,7 @@ export default function Dashboard() {
                     showBuildings={showBuildings}
                     showWards={showWards}
                     showHospitals={showHospitals}
+                    onSelectFeature={setSelected}
                   />
                 </div>
               </div>

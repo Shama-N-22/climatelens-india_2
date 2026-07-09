@@ -33,6 +33,9 @@ interface MapViewProps {
   showBuildings?: boolean;
   showHospitals?: boolean;
   showWards?: boolean;
+  onSelectFeature?: (
+    f: { type: "hospital" | "ward"; props: Record<string, any> } | null,
+  ) => void;
 }
 
 function FlyToCity({
@@ -61,6 +64,7 @@ export default function MapView({
   showBuildings = false,
   showHospitals = false,
   showWards = false,
+  onSelectFeature,
 }: MapViewProps) {
   const [basemapId, setBasemapId] = useState(DEFAULT_BASEMAP.id);
   const [opacity, setOpacity] = useState(0.75);
@@ -195,19 +199,24 @@ export default function MapView({
             key={`wards-${cityId}`}
             data={wards}
             style={{
-              color: "#f59e0b",
-              weight: 1,
-              fillColor: "#f59e0b",
-              fillOpacity: 0.06,
+              color: "#000000",
+              weight: 1.4,
+              fillColor: "#000000",
+              fillOpacity: 0,
             }}
             onEachFeature={(f, layer) => {
               const p = f.properties || {};
-              const pop =
-                p.population != null
-                  ? `<br/>Population: <b>${Number(p.population).toLocaleString("en-IN")}</b>`
-                  : "";
-              const zone = p.zone ? `<br/>Zone: ${p.zone}` : "";
-              layer.bindPopup(`<b>Ward ${p.name ?? ""}</b>${pop}${zone}`);
+              const label =
+                p.ward_no != null
+                  ? `Ward ${p.ward_no}`
+                  : `Ward ${p.name ?? ""}`;
+              layer.bindTooltip(label, { sticky: true, direction: "top" });
+              layer.on(
+                "click",
+                () =>
+                  onSelectFeature &&
+                  onSelectFeature({ type: "ward", props: p }),
+              );
             }}
           />
         )}
@@ -219,17 +228,24 @@ export default function MapView({
             pointToLayer={(_f, latlng) =>
               L.circleMarker(latlng, {
                 radius: 4,
-                color: "#38bdf8",
+                color: "#c2410c",
                 weight: 1,
-                fillColor: "#38bdf8",
-                fillOpacity: 0.75,
+                fillColor: "#f97316",
+                fillOpacity: 0.85,
               })
             }
-            onEachFeature={(f, layer) =>
-              layer.bindPopup(
-                `<b>${f.properties?.name ?? "Healthcare facility"}</b>`,
-              )
-            }
+            onEachFeature={(f, layer) => {
+              const p = f.properties || {};
+              layer.bindTooltip(p.name ?? "Healthcare facility", {
+                direction: "top",
+              });
+              layer.on(
+                "click",
+                () =>
+                  onSelectFeature &&
+                  onSelectFeature({ type: "hospital", props: p }),
+              );
+            }}
           />
         )}
 
