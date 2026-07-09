@@ -404,7 +404,10 @@ export default function Dashboard() {
                       />
                     ))}
                   </div>
-                  <FeatureDetail feature={selected} />
+                  <FeatureDetail
+                    feature={selected}
+                    onClose={() => setSelected(null)}
+                  />
                 </div>
                 <div className="relative h-[600px] overflow-hidden rounded-2xl border border-white/10">
                   <MapView

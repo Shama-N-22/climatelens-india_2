@@ -227,11 +227,12 @@ export default function MapView({
             data={hospitals}
             pointToLayer={(_f, latlng) =>
               L.circleMarker(latlng, {
-                radius: 4,
+                radius: 6,
                 color: "#c2410c",
                 weight: 1,
                 fillColor: "#f97316",
-                fillOpacity: 0.85,
+                fillOpacity: 0.9,
+                bubblingMouseEvents: false,
               })
             }
             onEachFeature={(f, layer) => {
