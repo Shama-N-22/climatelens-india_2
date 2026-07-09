@@ -1,11 +1,18 @@
 // File: src/components/map/MapView.tsx
 //
-// Map panel. Index tiles + building footprints come live from the backend.
-// Buildings are controlled from the "Layers" dropdown in the top bar (passed
-// in via the showBuildings prop) and always render ABOVE the index layer.
+// Map panel. Index tiles + buildings come from the backend. Hospitals and ward
+// boundaries are vector overlays loaded from /public/geojson (clickable, with
+// attributes in popups). All overlays are toggled from the "Layers" dropdown.
 
 import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, ZoomControl, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  ZoomControl,
+  GeoJSON,
+  useMap,
+} from "react-leaflet";
+import L from "leaflet";
 import MapLegend from "../dashboard/MapLegend";
 import BasemapSwitcher from "./BasemapSwitcher";
 import { BASEMAPS, DEFAULT_BASEMAP } from "../../data/basemaps";
@@ -14,7 +21,7 @@ import { API_BASE } from "../../config";
 import type { ParamKey } from "../../data/legendRamps";
 import "leaflet/dist/leaflet.css";
 
-const DEFAULT_CENTER: [number, number] = [23.0225, 72.5714]; // Ahmedabad
+const DEFAULT_CENTER: [number, number] = [23.0225, 72.5714];
 
 interface MapViewProps {
   parameter?: ParamKey;
@@ -24,6 +31,8 @@ interface MapViewProps {
   year?: number;
   month?: number;
   showBuildings?: boolean;
+  showHospitals?: boolean;
+  showWards?: boolean;
 }
 
 function FlyToCity({
@@ -50,16 +59,20 @@ export default function MapView({
   year = DEFAULT_TIMELINE.year,
   month = DEFAULT_TIMELINE.month,
   showBuildings = false,
+  showHospitals = false,
+  showWards = false,
 }: MapViewProps) {
   const [basemapId, setBasemapId] = useState(DEFAULT_BASEMAP.id);
   const [opacity, setOpacity] = useState(0.75);
   const [tileUrl, setTileUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [buildingsUrl, setBuildingsUrl] = useState<string | null>(null);
+  const [hospitals, setHospitals] = useState<any>(null);
+  const [wards, setWards] = useState<any>(null);
 
   const basemap = BASEMAPS.find((b) => b.id === basemapId) ?? DEFAULT_BASEMAP;
 
-  // fetch the index tile URL whenever the selection changes
+  // index tiles
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
@@ -73,9 +86,7 @@ export default function MapView({
         if (d && d.url) {
           setTileUrl(d.url);
           setStatus("ok");
-        } else {
-          setStatus("empty");
-        }
+        } else setStatus("empty");
       })
       .catch(() => {
         if (!cancelled) setStatus("error");
@@ -85,7 +96,7 @@ export default function MapView({
     };
   }, [parameter, cityId, year, month]);
 
-  // fetch building footprints once per city, only when toggled on
+  // buildings (backend tile)
   useEffect(() => {
     if (!showBuildings) return;
     let cancelled = false;
@@ -101,6 +112,46 @@ export default function MapView({
       cancelled = true;
     };
   }, [showBuildings, cityId]);
+
+  // hospitals (local geojson)
+  useEffect(() => {
+    if (!showHospitals) {
+      setHospitals(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/geojson/hospitals-${cityId}.geojson`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled) setHospitals(d);
+      })
+      .catch(() => {
+        if (!cancelled) setHospitals(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showHospitals, cityId]);
+
+  // wards (local geojson; only Mumbai & Hyderabad have them)
+  useEffect(() => {
+    if (!showWards) {
+      setWards(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/geojson/wards-${cityId}.geojson`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled) setWards(d);
+      })
+      .catch(() => {
+        if (!cancelled) setWards(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showWards, cityId]);
 
   return (
     <div className="relative h-full w-full">
@@ -139,11 +190,53 @@ export default function MapView({
           />
         )}
 
+        {showWards && wards && (
+          <GeoJSON
+            key={`wards-${cityId}`}
+            data={wards}
+            style={{
+              color: "#f59e0b",
+              weight: 1,
+              fillColor: "#f59e0b",
+              fillOpacity: 0.06,
+            }}
+            onEachFeature={(f, layer) => {
+              const p = f.properties || {};
+              const pop =
+                p.population != null
+                  ? `<br/>Population: <b>${Number(p.population).toLocaleString("en-IN")}</b>`
+                  : "";
+              const zone = p.zone ? `<br/>Zone: ${p.zone}` : "";
+              layer.bindPopup(`<b>Ward ${p.name ?? ""}</b>${pop}${zone}`);
+            }}
+          />
+        )}
+
+        {showHospitals && hospitals && (
+          <GeoJSON
+            key={`hosp-${cityId}`}
+            data={hospitals}
+            pointToLayer={(_f, latlng) =>
+              L.circleMarker(latlng, {
+                radius: 4,
+                color: "#38bdf8",
+                weight: 1,
+                fillColor: "#38bdf8",
+                fillOpacity: 0.75,
+              })
+            }
+            onEachFeature={(f, layer) =>
+              layer.bindPopup(
+                `<b>${f.properties?.name ?? "Healthcare facility"}</b>`,
+              )
+            }
+          />
+        )}
+
         <FlyToCity center={center} zoom={zoom} />
         <ZoomControl position="bottomright" />
       </MapContainer>
 
-      {/* opacity (only when an index layer is showing) */}
       {status === "ok" && (
         <div className="absolute left-4 top-4 z-[1000] w-56 rounded-xl border border-white/10 bg-[#0B1220]/80 p-3 shadow-xl backdrop-blur-md">
           <div className="mb-2 flex items-center justify-between">
@@ -171,7 +264,6 @@ export default function MapView({
         </div>
       )}
 
-      {/* status badge for loading / no-data / error */}
       {status !== "ok" && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 z-[1000] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-[#0B1220]/85 px-4 py-3 text-center shadow-2xl backdrop-blur-md">
           <p className="text-sm font-medium text-slate-100">
@@ -188,12 +280,10 @@ export default function MapView({
         </div>
       )}
 
-      {/* top-right: base map style */}
       <div className="absolute right-4 top-4 z-[1000]">
         <BasemapSwitcher value={basemapId} onChange={setBasemapId} />
       </div>
 
-      {/* bottom-right: dynamic legend */}
       <div className="absolute bottom-6 right-4 z-[1000]">
         <MapLegend parameter={parameter} />
       </div>

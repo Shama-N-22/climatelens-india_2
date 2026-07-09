@@ -219,6 +219,8 @@ export default function Dashboard() {
   const [year, setYear] = useState(DEFAULT_TIMELINE.year);
   const [month, setMonth] = useState(DEFAULT_TIMELINE.month);
   const [showBuildings, setShowBuildings] = useState(false);
+  const [showHospitals, setShowHospitals] = useState(false);
+  const [showWards, setShowWards] = useState(false);
 
   const city = useMemo(() => getCity(cityId), [cityId]);
   const insight = city.insights[parameter];
@@ -356,7 +358,11 @@ export default function Dashboard() {
             />
             <LayersMenu
               showBuildings={showBuildings}
+              showWards={showWards}
+              showHospitals={showHospitals}
               onToggleBuildings={setShowBuildings}
+              onToggleWards={setShowWards}
+              onToggleHospitals={setShowHospitals}
             />
             <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-400">
               <Search className="h-4 w-4" />
@@ -402,6 +408,8 @@ export default function Dashboard() {
                     year={year}
                     month={month}
                     showBuildings={showBuildings}
+                    showWards={showWards}
+                    showHospitals={showHospitals}
                   />
                 </div>
               </div>
