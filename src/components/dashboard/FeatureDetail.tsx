@@ -1,5 +1,6 @@
 // File: src/components/dashboard/FeatureDetail.tsx
-// Clicking a hospital or ward opens a readable popup modal with all its details.
+// Clicking a hospital or ward on the map opens this readable popup modal.
+import { motion } from "framer-motion";
 import {
   HeartPulse,
   Grid3x3,
@@ -47,42 +48,40 @@ export default function FeatureDetail({
 }) {
   if (!feature) return null;
   const p = feature.props || {};
+  const isHospital = feature.type === "hospital";
 
   return (
     <div
       className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0f1a2e] shadow-2xl"
+        className="max-h-[85vh] w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0f1a2e]/95 shadow-2xl"
       >
-        {/* header */}
         <div className="flex items-start justify-between gap-3 border-b border-white/10 p-5">
           <div className="flex items-center gap-3">
-            {feature.type === "hospital" ? (
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-500/15">
+            <span
+              className={`grid h-10 w-10 place-items-center rounded-xl ${isHospital ? "bg-orange-500/15" : "bg-amber-400/15"}`}
+            >
+              {isHospital ? (
                 <HeartPulse className="h-5 w-5 text-orange-400" />
-              </span>
-            ) : (
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/15">
+              ) : (
                 <Grid3x3 className="h-5 w-5 text-amber-300" />
-              </span>
-            )}
+              )}
+            </span>
             <div>
               <p
                 style={{ fontFamily: "var(--font-mono)" }}
                 className="text-[10px] uppercase tracking-widest text-slate-400"
               >
-                {feature.type === "hospital"
-                  ? "Healthcare facility"
-                  : `Ward ${p.ward_no ?? ""}`}
+                {isHospital ? "Healthcare facility" : `Ward ${p.ward_no ?? ""}`}
               </p>
               <h3 className="text-lg font-bold leading-tight text-slate-50">
-                {p.name ||
-                  (feature.type === "hospital"
-                    ? "Healthcare facility"
-                    : "Ward")}
+                {p.name || (isHospital ? "Healthcare facility" : "Ward")}
               </h3>
             </div>
           </div>
@@ -94,9 +93,8 @@ export default function FeatureDetail({
           </button>
         </div>
 
-        {/* body */}
-        <div className="p-5">
-          {feature.type === "hospital" ? (
+        <div className="max-h-[60vh] overflow-y-auto p-5">
+          {isHospital ? (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <Stat
@@ -179,7 +177,7 @@ export default function FeatureDetail({
             </>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
