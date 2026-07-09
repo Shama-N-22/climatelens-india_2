@@ -33,6 +33,7 @@ interface MapViewProps {
   showBuildings?: boolean;
   showHospitals?: boolean;
   showWards?: boolean;
+  showUHI?: boolean;
   onSelectFeature?: (
     f: { type: "hospital" | "ward"; props: Record<string, any> } | null,
   ) => void;
@@ -64,6 +65,7 @@ export default function MapView({
   showBuildings = false,
   showHospitals = false,
   showWards = false,
+  showUHI = false,
   onSelectFeature,
 }: MapViewProps) {
   const [basemapId, setBasemapId] = useState(DEFAULT_BASEMAP.id);
@@ -71,6 +73,7 @@ export default function MapView({
   const [tileUrl, setTileUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [buildingsUrl, setBuildingsUrl] = useState<string | null>(null);
+  const [uhiUrl, setUhiUrl] = useState<string | null>(null);
   const [hospitals, setHospitals] = useState<any>(null);
   const [wards, setWards] = useState<any>(null);
 
@@ -116,6 +119,23 @@ export default function MapView({
       cancelled = true;
     };
   }, [showBuildings, cityId]);
+
+  // UHI hotspots (backend tile)
+  useEffect(() => {
+    if (!showUHI) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/uhi?city=${cityId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d && d.url) setUhiUrl(d.url);
+      })
+      .catch(() => {
+        if (!cancelled) setUhiUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showUHI, cityId]);
 
   // hospitals (local geojson)
   useEffect(() => {
@@ -191,6 +211,17 @@ export default function MapView({
             attribution="Google Open Buildings"
             zIndex={500}
             maxZoom={20}
+          />
+        )}
+
+        {showUHI && uhiUrl && (
+          <TileLayer
+            key={`uhi-${cityId}`}
+            url={uhiUrl}
+            attribution="UHI Hotspots &middot; Earth Engine"
+            opacity={0.7}
+            zIndex={450}
+            maxZoom={18}
           />
         )}
 
