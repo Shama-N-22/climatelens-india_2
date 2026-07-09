@@ -1,6 +1,6 @@
 // File: src/pages/Landing.tsx
 import { useNavigate } from "react-router-dom";
-import { motion, type Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -105,19 +105,12 @@ const SOCIALS = [
   },
 ];
 
-const fadeUp: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 24,
-  },
-  show: (i: number = 0) => ({
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: {
-      delay: 0.15 + i * 0.08,
-      duration: 0.6,
-      ease: "easeOut" as const,
-    },
+    transition: { delay: 0.15 + i * 0.08, duration: 0.6, ease: "easeOut" },
   }),
 };
 
@@ -140,17 +133,21 @@ export default function Landing() {
         <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
           <Wordmark showLogo />
           <nav className="hidden items-center gap-8 text-sm text-slate-300 md:flex">
-            <a className="transition hover:text-white" href="#modules">
+            <button
+              onClick={() => navigate("/platform")}
+              className="transition hover:text-white"
+            >
               Platform
-            </a>
+            </button>
             <a className="transition hover:text-white" href="#about">
               About
             </a>
             <button
               onClick={() => navigate("/dashboard")}
-              className="rounded-lg border border-white/15 px-4 py-1.5 text-slate-100 transition hover:border-amber-300/50 hover:text-amber-200"
+              className="group inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-1.5 font-semibold text-slate-900 shadow-lg shadow-amber-500/20 transition hover:brightness-110"
             >
               Launch
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
             </button>
           </nav>
         </header>

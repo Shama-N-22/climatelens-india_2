@@ -225,6 +225,7 @@ export default function Dashboard() {
   const [showHospitals, setShowHospitals] = useState(false);
   const [showWards, setShowWards] = useState(false);
   const [selected, setSelected] = useState<SelectedFeature | null>(null);
+  const [showUHI, setShowUHI] = useState(false);
 
   const city = useMemo(() => getCity(cityId), [cityId]);
   const insight = city.insights[parameter];
@@ -312,13 +313,20 @@ export default function Dashboard() {
           </p>
           <div className="space-y-1">
             <button
-              onClick={() => {
-                /* TODO: wire UHI Dynamic Hotspot view */
-              }}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-white/5"
+              onClick={() => setShowUHI((v) => !v)}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${
+                showUHI
+                  ? "bg-rose-500/15 text-rose-200 ring-1 ring-rose-400/30"
+                  : "text-slate-300 hover:bg-white/5"
+              }`}
             >
               <Flame className="h-4 w-4 shrink-0" />
               UHI Dynamic Hotspot
+              {showUHI && (
+                <span className="ml-auto text-[10px] font-semibold text-rose-300">
+                  ON
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -393,21 +401,15 @@ export default function Dashboard() {
             defaultRight={420}
             left={
               <div className="flex flex-col gap-4 pr-4">
-                <div className="flex gap-3">
-                  <div className="grid w-1/2 grid-cols-4 gap-2.5">
-                    {city.kpis.slice(0, 8).map((k, i) => (
-                      <KpiCard
-                        key={k.key + cityId}
-                        kpi={k}
-                        index={i}
-                        onOpen={setPopupKpi}
-                      />
-                    ))}
-                  </div>
-                  <FeatureDetail
-                    feature={selected}
-                    onClose={() => setSelected(null)}
-                  />
+                <div className="grid w-1/2 grid-cols-4 gap-2.5">
+                  {city.kpis.slice(0, 8).map((k, i) => (
+                    <KpiCard
+                      key={k.key + cityId}
+                      kpi={k}
+                      index={i}
+                      onOpen={setPopupKpi}
+                    />
+                  ))}
                 </div>
                 <div className="relative h-[600px] overflow-hidden rounded-2xl border border-white/10">
                   <MapView
@@ -421,6 +423,7 @@ export default function Dashboard() {
                     showWards={showWards}
                     showHospitals={showHospitals}
                     onSelectFeature={setSelected}
+                    showUHI={showUHI}
                   />
                 </div>
               </div>
@@ -531,6 +534,9 @@ export default function Dashboard() {
 
       {popupKpi && (
         <KpiModal kpi={popupKpi} onClose={() => setPopupKpi(null)} />
+      )}
+      {selected && (
+        <FeatureDetail feature={selected} onClose={() => setSelected(null)} />
       )}
     </div>
   );

@@ -1,22 +1,39 @@
 // File: src/components/dashboard/FeatureDetail.tsx
-// Details for a clicked hospital or ward, shown beside the KPIs. Content is
-// clipped inside its own box (no overflow onto other panels); long fields get
-// a "Read more" expander.
-import { useState } from "react";
-import { HeartPulse, Grid3x3, MapPin, Building2, Droplets, Thermometer, Users, X } from "lucide-react";
+// Clicking a hospital or ward opens a readable popup modal with all its details.
+import {
+  HeartPulse,
+  Grid3x3,
+  MapPin,
+  Building2,
+  Droplets,
+  Thermometer,
+  Users,
+  X,
+  ExternalLink,
+} from "lucide-react";
 
 export interface SelectedFeature {
   type: "hospital" | "ward";
   props: Record<string, any>;
 }
 
-function Row({ icon: Icon, label, value }: { icon: any; label: string; value: React.ReactNode }) {
+function Stat({
+  icon: Icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: any;
+  label: string;
+  value: React.ReactNode;
+  accent?: string;
+}) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2">
-      <span className="flex shrink-0 items-center gap-2 text-xs text-slate-400">
-        <Icon className="h-3.5 w-3.5" /> {label}
-      </span>
-      <span className="truncate text-right text-xs font-semibold text-slate-100">{value}</span>
+    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+      <div className="mb-1 flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
+        <Icon className={`h-3.5 w-3.5 ${accent ?? ""}`} /> {label}
+      </div>
+      <div className="text-base font-bold text-slate-50">{value}</div>
     </div>
   );
 }
@@ -26,82 +43,143 @@ export default function FeatureDetail({
   onClose,
 }: {
   feature: SelectedFeature | null;
-  onClose?: () => void;
+  onClose: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-
-  if (!feature) {
-    return (
-      <div className="flex w-1/2 min-h-[130px] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-center">
-        <Grid3x3 className="mb-2 h-5 w-5 text-slate-600" />
-        <p className="text-xs text-slate-500">Click a hospital or ward on the map to see its details here.</p>
-      </div>
-    );
-  }
-
+  if (!feature) return null;
   const p = feature.props || {};
 
   return (
-    <div className="relative flex max-h-[220px] w-1/2 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0f1a2e]/70 p-4">
-      {onClose && (
-        <button onClick={onClose} className="absolute right-2 top-2 text-slate-500 transition hover:text-slate-200">
-          <X className="h-4 w-4" />
-        </button>
-      )}
+    <div
+      className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0f1a2e] shadow-2xl"
+      >
+        {/* header */}
+        <div className="flex items-start justify-between gap-3 border-b border-white/10 p-5">
+          <div className="flex items-center gap-3">
+            {feature.type === "hospital" ? (
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-orange-500/15">
+                <HeartPulse className="h-5 w-5 text-orange-400" />
+              </span>
+            ) : (
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/15">
+                <Grid3x3 className="h-5 w-5 text-amber-300" />
+              </span>
+            )}
+            <div>
+              <p
+                style={{ fontFamily: "var(--font-mono)" }}
+                className="text-[10px] uppercase tracking-widest text-slate-400"
+              >
+                {feature.type === "hospital"
+                  ? "Healthcare facility"
+                  : `Ward ${p.ward_no ?? ""}`}
+              </p>
+              <h3 className="text-lg font-bold leading-tight text-slate-50">
+                {p.name ||
+                  (feature.type === "hospital"
+                    ? "Healthcare facility"
+                    : "Ward")}
+              </h3>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 transition hover:text-slate-200"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-      {feature.type === "hospital" ? (
-        <>
-          <div className="mb-2 flex items-center gap-2">
-            <HeartPulse className="h-4 w-4 text-orange-400" />
-            <span className="text-[10px] uppercase tracking-widest text-slate-400" style={{ fontFamily: "var(--font-mono)" }}>
-              Healthcare facility
-            </span>
-          </div>
-          <h3 className="pr-5 text-sm font-bold text-slate-50">{p.name || "Healthcare facility"}</h3>
-          <div className="mt-3 space-y-1.5 overflow-y-auto pr-1">
-            {p.type && <Row icon={HeartPulse} label="Type" value={p.type} />}
-            {p.emergency && <Row icon={Thermometer} label="Emergency" value={p.emergency} />}
-            {p.address && (
-              <div className="rounded-lg bg-white/5 px-3 py-2">
-                <div className="mb-1 flex items-center gap-2 text-xs text-slate-400">
-                  <MapPin className="h-3.5 w-3.5" /> Address
-                </div>
-                <p className={`text-xs text-slate-200 ${expanded ? "" : "line-clamp-2"}`}>{p.address}</p>
-                {p.address.length > 60 && (
-                  <button onClick={() => setExpanded((e) => !e)} className="mt-1 text-[11px] text-teal-300 hover:text-teal-200">
-                    {expanded ? "Show less" : "Read more"}
-                  </button>
-                )}
+        {/* body */}
+        <div className="p-5">
+          {feature.type === "hospital" ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Stat
+                  icon={HeartPulse}
+                  label="Type"
+                  value={p.type || "—"}
+                  accent="text-orange-400"
+                />
+                <Stat
+                  icon={Thermometer}
+                  label="Emergency"
+                  value={p.emergency || "—"}
+                  accent="text-rose-400"
+                />
               </div>
-            )}
-            {p.url && (
-              <a href={p.url} target="_blank" rel="noopener noreferrer"
-                className="block rounded-lg bg-teal-400/10 px-3 py-2 text-xs text-teal-200 transition hover:bg-teal-400/20">
-                Visit website →
-              </a>
-            )}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="mb-2 flex items-center gap-2">
-            <Grid3x3 className="h-4 w-4 text-amber-300" />
-            <span className="text-[10px] uppercase tracking-widest text-slate-400" style={{ fontFamily: "var(--font-mono)" }}>
-              Ward {p.ward_no ?? ""}
-            </span>
-          </div>
-          <h3 className="pr-5 text-sm font-bold text-slate-50">{p.name || "Ward"}</h3>
-          <div className="mt-3 grid grid-cols-2 gap-1.5 overflow-y-auto pr-1">
-            <Row icon={Users} label="Population" value={p.population != null && p.population > 0 ? Number(p.population).toLocaleString("en-IN") : "—"} />
-            <Row icon={HeartPulse} label="Hospitals" value={p.hospital_count ?? 0} />
-            <Row icon={Building2} label="Buildings" value="—" />
-            <Row icon={Droplets} label="Water pts" value="—" />
-            <Row icon={Thermometer} label="Max LST" value="—" />
-            <Row icon={Grid3x3} label="Zone" value={p.zone || "—"} />
-          </div>
-          <p className="mt-2 shrink-0 text-[10px] text-slate-500">Buildings / water / max-LST fill in as those datasets arrive.</p>
-        </>
-      )}
+              {p.address && (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="mb-1 flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-400">
+                    <MapPin className="h-3.5 w-3.5" /> Address
+                  </div>
+                  <p className="text-sm leading-relaxed text-slate-200">
+                    {p.address}
+                  </p>
+                </div>
+              )}
+              {p.url && (
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-teal-400/10 px-4 py-2.5 text-sm font-medium text-teal-200 transition hover:bg-teal-400/20"
+                >
+                  <ExternalLink className="h-4 w-4" /> Visit website
+                </a>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Stat
+                  icon={Users}
+                  label="Population"
+                  accent="text-sky-400"
+                  value={
+                    p.population != null && p.population > 0
+                      ? Number(p.population).toLocaleString("en-IN")
+                      : "—"
+                  }
+                />
+                <Stat
+                  icon={HeartPulse}
+                  label="Hospitals"
+                  value={p.hospital_count ?? 0}
+                  accent="text-orange-400"
+                />
+                <Stat icon={Building2} label="Buildings" value="—" />
+                <Stat
+                  icon={Droplets}
+                  label="Water points"
+                  value="—"
+                  accent="text-sky-400"
+                />
+                <Stat
+                  icon={Thermometer}
+                  label="Max LST"
+                  value="—"
+                  accent="text-rose-400"
+                />
+                <Stat
+                  icon={Grid3x3}
+                  label="Zone"
+                  value={p.zone || "—"}
+                  accent="text-amber-300"
+                />
+              </div>
+              <p className="mt-4 text-xs text-slate-500">
+                Buildings, water points and max-LST fill in as those datasets
+                are added.
+              </p>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
