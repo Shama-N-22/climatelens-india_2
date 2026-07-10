@@ -1,5 +1,9 @@
 // File: src/components/dashboard/FeatureDetail.tsx
-// Clicking a hospital or ward on the map opens this readable popup modal.
+// Two parts:
+//  - FeatureDetail: the always-visible INLINE box beside the KPIs (compact table
+//    + a "Read more" button).
+//  - FeatureModal: the popup that opens when "Read more" is clicked (full view).
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   HeartPulse,
@@ -11,6 +15,7 @@ import {
   Users,
   X,
   ExternalLink,
+  Maximize2,
 } from "lucide-react";
 
 export interface SelectedFeature {
@@ -18,6 +23,101 @@ export interface SelectedFeature {
   props: Record<string, any>;
 }
 
+const fmtPop = (v: any) =>
+  v != null && v > 0 ? Number(v).toLocaleString("en-IN") : "—";
+
+/* ---------------- inline box (always visible) ---------------- */
+export default function FeatureDetail({
+  feature,
+}: {
+  feature: SelectedFeature | null;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (!feature) {
+    return (
+      <div className="flex w-1/2 min-h-[130px] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-center">
+        <Grid3x3 className="mb-2 h-5 w-5 text-slate-600" />
+        <p className="text-xs text-slate-500">
+          Click a hospital or ward on the map to see its details here.
+        </p>
+      </div>
+    );
+  }
+
+  const p = feature.props || {};
+  const isHospital = feature.type === "hospital";
+
+  // compact rows for the inline table
+  const rows: [string, React.ReactNode][] = isHospital
+    ? [
+        ["Type", p.type || "—"],
+        ["Emergency", p.emergency || "—"],
+        [
+          "Address",
+          p.address ? <span className="truncate">{p.address}</span> : "—",
+        ],
+      ]
+    : [
+        ["Ward no.", p.ward_no ?? p.name ?? "—"],
+        ["Population", fmtPop(p.population)],
+        ["Hospitals", p.hospital_count ?? 0],
+        ["Buildings", "—"],
+        ["Water", "—"],
+        ["Max LST", "—"],
+      ];
+
+  return (
+    <>
+      <div className="flex w-1/2 flex-col rounded-xl border border-white/10 bg-[#0f1a2e]/70 p-3">
+        <div className="mb-2 flex items-center gap-2">
+          {isHospital ? (
+            <HeartPulse className="h-4 w-4 text-orange-400" />
+          ) : (
+            <Grid3x3 className="h-4 w-4 text-amber-300" />
+          )}
+          <span
+            style={{ fontFamily: "var(--font-mono)" }}
+            className="text-[9px] uppercase tracking-widest text-slate-400"
+          >
+            {isHospital ? "Healthcare facility" : `Ward ${p.ward_no ?? ""}`}
+          </span>
+        </div>
+        <h3 className="truncate text-sm font-bold text-slate-50">
+          {p.name || (isHospital ? "Facility" : "Ward")}
+        </h3>
+
+        {/* compact table */}
+        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+          {rows.map(([k, v]) => (
+            <div
+              key={k}
+              className="flex items-center justify-between gap-2 border-b border-white/5 py-0.5"
+            >
+              <span className="shrink-0 text-slate-400">{k}</span>
+              <span className="truncate text-right font-semibold text-slate-100">
+                {v}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setOpen(true)}
+          className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-teal-400/10 px-3 py-1.5 text-xs font-medium text-teal-200 transition hover:bg-teal-400/20"
+        >
+          <Maximize2 className="h-3.5 w-3.5" /> Read more
+        </button>
+      </div>
+
+      {open && (
+        <FeatureModal feature={feature} onClose={() => setOpen(false)} />
+      )}
+    </>
+  );
+}
+
+/* ---------------- popup (opens on "Read more") ---------------- */
 function Stat({
   icon: Icon,
   label,
@@ -39,14 +139,13 @@ function Stat({
   );
 }
 
-export default function FeatureDetail({
+function FeatureModal({
   feature,
   onClose,
 }: {
-  feature: SelectedFeature | null;
+  feature: SelectedFeature;
   onClose: () => void;
 }) {
-  if (!feature) return null;
   const p = feature.props || {};
   const isHospital = feature.type === "hospital";
 
@@ -81,7 +180,7 @@ export default function FeatureDetail({
                 {isHospital ? "Healthcare facility" : `Ward ${p.ward_no ?? ""}`}
               </p>
               <h3 className="text-lg font-bold leading-tight text-slate-50">
-                {p.name || (isHospital ? "Healthcare facility" : "Ward")}
+                {p.name || (isHospital ? "Facility" : "Ward")}
               </h3>
             </div>
           </div>
@@ -135,31 +234,33 @@ export default function FeatureDetail({
             <>
               <div className="grid grid-cols-2 gap-3">
                 <Stat
+                  icon={Grid3x3}
+                  label="Ward number"
+                  value={p.ward_no ?? p.name ?? "—"}
+                  accent="text-amber-300"
+                />
+                <Stat
                   icon={Users}
                   label="Population"
+                  value={fmtPop(p.population)}
                   accent="text-sky-400"
-                  value={
-                    p.population != null && p.population > 0
-                      ? Number(p.population).toLocaleString("en-IN")
-                      : "—"
-                  }
                 />
                 <Stat
                   icon={HeartPulse}
-                  label="Hospitals"
+                  label="Hospital count"
                   value={p.hospital_count ?? 0}
                   accent="text-orange-400"
                 />
                 <Stat icon={Building2} label="Buildings" value="—" />
                 <Stat
                   icon={Droplets}
-                  label="Water points"
+                  label="Drinking water"
                   value="—"
                   accent="text-sky-400"
                 />
                 <Stat
                   icon={Thermometer}
-                  label="Max LST"
+                  label="Max LST (Tmax)"
                   value="—"
                   accent="text-rose-400"
                 />
@@ -171,7 +272,7 @@ export default function FeatureDetail({
                 />
               </div>
               <p className="mt-4 text-xs text-slate-500">
-                Buildings, water points and max-LST fill in as those datasets
+                Buildings, drinking-water and max-LST fill in as those datasets
                 are added.
               </p>
             </>

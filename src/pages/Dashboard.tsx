@@ -401,15 +401,18 @@ export default function Dashboard() {
             defaultRight={420}
             left={
               <div className="flex flex-col gap-4 pr-4">
-                <div className="grid w-1/2 grid-cols-4 gap-2.5">
-                  {city.kpis.slice(0, 8).map((k, i) => (
-                    <KpiCard
-                      key={k.key + cityId}
-                      kpi={k}
-                      index={i}
-                      onOpen={setPopupKpi}
-                    />
-                  ))}
+                <div className="flex gap-3">
+                  <div className="grid w-1/2 grid-cols-4 gap-2.5">
+                    {city.kpis.slice(0, 8).map((k, i) => (
+                      <KpiCard
+                        key={k.key + cityId}
+                        kpi={k}
+                        index={i}
+                        onOpen={setPopupKpi}
+                      />
+                    ))}
+                  </div>
+                  <FeatureDetail feature={selected} />
                 </div>
                 <div className="relative h-[600px] overflow-hidden rounded-2xl border border-white/10">
                   <MapView
@@ -534,9 +537,6 @@ export default function Dashboard() {
 
       {popupKpi && (
         <KpiModal kpi={popupKpi} onClose={() => setPopupKpi(null)} />
-      )}
-      {selected && (
-        <FeatureDetail feature={selected} onClose={() => setSelected(null)} />
       )}
     </div>
   );
