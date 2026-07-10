@@ -242,12 +242,10 @@ export default function MapView({
                   ? `Ward ${p.ward_no}`
                   : `Ward ${p.name ?? ""}`;
               layer.bindTooltip(label, { sticky: true, direction: "top" });
-              layer.on(
-                "click",
-                () =>
-                  onSelectFeature &&
-                  onSelectFeature({ type: "ward", props: p }),
-              );
+              layer.on("click", (e: any) => {
+                if (e?.originalEvent) L.DomEvent.stop(e.originalEvent);
+                onSelectFeature && onSelectFeature({ type: "ward", props: p });
+              });
             }}
           />
         )}
@@ -271,12 +269,11 @@ export default function MapView({
               layer.bindTooltip(p.name ?? "Healthcare facility", {
                 direction: "top",
               });
-              layer.on(
-                "click",
-                () =>
-                  onSelectFeature &&
-                  onSelectFeature({ type: "hospital", props: p }),
-              );
+              layer.on("click", (e: any) => {
+                if (e?.originalEvent) L.DomEvent.stop(e.originalEvent);
+                onSelectFeature &&
+                  onSelectFeature({ type: "hospital", props: p });
+              });
             }}
           />
         )}

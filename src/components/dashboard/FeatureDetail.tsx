@@ -36,7 +36,7 @@ export default function FeatureDetail({
 
   if (!feature) {
     return (
-      <div className="flex w-1/2 min-h-[130px] flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-center">
+      <div className="flex h-[132px] w-1/2 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-4 text-center">
         <Grid3x3 className="mb-2 h-5 w-5 text-slate-600" />
         <p className="text-xs text-slate-500">
           Click a hospital or ward on the map to see its details here.
@@ -48,29 +48,24 @@ export default function FeatureDetail({
   const p = feature.props || {};
   const isHospital = feature.type === "hospital";
 
-  // compact rows for the inline table
+  // 2 key rows for the compact inline box (full details in the popup)
   const rows: [string, React.ReactNode][] = isHospital
     ? [
         ["Type", p.type || "—"],
-        ["Emergency", p.emergency || "—"],
         [
           "Address",
           p.address ? <span className="truncate">{p.address}</span> : "—",
         ],
       ]
     : [
-        ["Ward no.", p.ward_no ?? p.name ?? "—"],
         ["Population", fmtPop(p.population)],
         ["Hospitals", p.hospital_count ?? 0],
-        ["Buildings", "—"],
-        ["Water", "—"],
-        ["Max LST", "—"],
       ];
 
   return (
     <>
-      <div className="flex w-1/2 flex-col rounded-xl border border-white/10 bg-[#0f1a2e]/70 p-3">
-        <div className="mb-2 flex items-center gap-2">
+      <div className="flex h-[132px] w-1/2 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0f1a2e]/70 p-3">
+        <div className="mb-1.5 flex items-center gap-2">
           {isHospital ? (
             <HeartPulse className="h-4 w-4 text-orange-400" />
           ) : (
@@ -87,8 +82,7 @@ export default function FeatureDetail({
           {p.name || (isHospital ? "Facility" : "Ward")}
         </h3>
 
-        {/* compact table */}
-        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+        <div className="mt-1.5 grid grid-cols-2 gap-x-3 text-[11px]">
           {rows.map(([k, v]) => (
             <div
               key={k}
@@ -104,7 +98,7 @@ export default function FeatureDetail({
 
         <button
           onClick={() => setOpen(true)}
-          className="mt-3 flex items-center justify-center gap-1.5 rounded-lg bg-teal-400/10 px-3 py-1.5 text-xs font-medium text-teal-200 transition hover:bg-teal-400/20"
+          className="mt-auto flex items-center justify-center gap-1.5 rounded-lg bg-teal-400/10 px-3 py-1.5 text-xs font-medium text-teal-200 transition hover:bg-teal-400/20"
         >
           <Maximize2 className="h-3.5 w-3.5" /> Read more
         </button>
