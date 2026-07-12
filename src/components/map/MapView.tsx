@@ -70,6 +70,7 @@ export default function MapView({
 }: MapViewProps) {
   const [basemapId, setBasemapId] = useState(DEFAULT_BASEMAP.id);
   const [opacity, setOpacity] = useState(0.75);
+  const [uhiOpacity, setUhiOpacity] = useState(0.8);
   const [tileUrl, setTileUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [buildingsUrl, setBuildingsUrl] = useState<string | null>(null);
@@ -209,7 +210,7 @@ export default function MapView({
             key={`buildings-${cityId}`}
             url={buildingsUrl}
             attribution="Google Open Buildings"
-            zIndex={500}
+            zIndex={450}
             maxZoom={20}
           />
         )}
@@ -219,8 +220,8 @@ export default function MapView({
             key={`uhi-${cityId}`}
             url={uhiUrl}
             attribution="UHI Hotspots &middot; Earth Engine"
-            opacity={0.7}
-            zIndex={450}
+            opacity={uhiOpacity}
+            zIndex={500}
             maxZoom={18}
           />
         )}
@@ -255,13 +256,17 @@ export default function MapView({
             key={`hosp-${cityId}`}
             data={hospitals}
             pointToLayer={(_f, latlng) =>
-              L.circleMarker(latlng, {
-                radius: 6,
-                color: "#c2410c",
-                weight: 1,
-                fillColor: "#f97316",
-                fillOpacity: 0.9,
-                bubblingMouseEvents: false,
+              L.marker(latlng, {
+                icon: L.divIcon({
+                  className: "",
+                  html:
+                    '<div style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;">' +
+                    '<svg width="16" height="16" viewBox="0 0 16 16">' +
+                    '<path d="M6.4 1.6h3.2v4.8h4.8v3.2H9.6v4.8H6.4V9.6H1.6V6.4h4.8z" fill="#f97316" stroke="#7c2d12" stroke-width="1"/>' +
+                    "</svg></div>",
+                  iconSize: [16, 16],
+                  iconAnchor: [8, 8],
+                }),
               })
             }
             onEachFeature={(f, layer) => {
@@ -282,30 +287,62 @@ export default function MapView({
         <ZoomControl position="bottomright" />
       </MapContainer>
 
-      {status === "ok" && (
-        <div className="absolute left-4 top-4 z-[1000] w-56 rounded-xl border border-white/10 bg-[#0B1220]/80 p-3 shadow-xl backdrop-blur-md">
-          <div className="mb-2 flex items-center justify-between">
-            <span
-              style={{ fontFamily: "var(--font-mono)" }}
-              className="text-[10px] uppercase tracking-wider text-slate-400"
-            >
-              Layer opacity
-            </span>
-            <span
-              style={{ fontFamily: "var(--font-mono)" }}
-              className="text-[11px] text-slate-300"
-            >
-              {Math.round(opacity * 100)}%
-            </span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={Math.round(opacity * 100)}
-            onChange={(e) => setOpacity(Number(e.target.value) / 100)}
-            className="h-1 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-teal-400"
-          />
+      {/* opacity sliders: index layer + UHI */}
+      {(status === "ok" || showUHI) && (
+        <div className="absolute left-4 top-4 z-[1000] flex w-56 flex-col gap-2">
+          {status === "ok" && (
+            <div className="rounded-xl border border-white/10 bg-[#0B1220]/80 p-3 shadow-xl backdrop-blur-md">
+              <div className="mb-2 flex items-center justify-between">
+                <span
+                  style={{ fontFamily: "var(--font-mono)" }}
+                  className="text-[10px] uppercase tracking-wider text-slate-400"
+                >
+                  Layer opacity
+                </span>
+                <span
+                  style={{ fontFamily: "var(--font-mono)" }}
+                  className="text-[11px] text-slate-300"
+                >
+                  {Math.round(opacity * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(opacity * 100)}
+                onChange={(e) => setOpacity(Number(e.target.value) / 100)}
+                className="h-1 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-teal-400"
+              />
+            </div>
+          )}
+
+          {showUHI && (
+            <div className="rounded-xl border border-white/10 bg-[#0B1220]/80 p-3 shadow-xl backdrop-blur-md">
+              <div className="mb-2 flex items-center justify-between">
+                <span
+                  style={{ fontFamily: "var(--font-mono)" }}
+                  className="text-[10px] uppercase tracking-wider text-slate-400"
+                >
+                  UHI opacity
+                </span>
+                <span
+                  style={{ fontFamily: "var(--font-mono)" }}
+                  className="text-[11px] text-slate-300"
+                >
+                  {Math.round(uhiOpacity * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(uhiOpacity * 100)}
+                onChange={(e) => setUhiOpacity(Number(e.target.value) / 100)}
+                className="h-1 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-orange-400"
+              />
+            </div>
+          )}
         </div>
       )}
 
