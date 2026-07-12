@@ -142,13 +142,15 @@ export default function Landing() {
             <a className="transition hover:text-white" href="#about">
               About
             </a>
-            <button
-              onClick={() => navigate("/dashboard")}
+            <a
+              href="https://mausam.imd.gov.in/imd_latest/contents/satellite.php"
+              target="_blank"
+              rel="noopener noreferrer"
               className="group inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-1.5 font-semibold text-slate-900 shadow-lg shadow-amber-500/20 transition hover:brightness-110"
             >
-              Launch
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-            </button>
+              Mausam
+              <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </a>
           </nav>
         </header>
 
@@ -190,9 +192,9 @@ export default function Landing() {
             animate="show"
             className="mt-6 max-w-xl text-lg leading-relaxed text-slate-300/90"
           >
-            Satellite-derived flood, heat, vegetation and water indices for
-            India's fastest-growing cities — fused into one decision-ready
-            operations dashboard.
+            Satellite-derived heat, vegetation and water indices for India's
+            fastest-growing cities — fused into one decision-ready operations
+            dashboard.
           </motion.p>
 
           <motion.div
