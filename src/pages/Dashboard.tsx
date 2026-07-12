@@ -231,6 +231,7 @@ export default function Dashboard() {
     null,
   );
   const [showUHI, setShowUHI] = useState(false);
+  const [showIndex, setShowIndex] = useState(true);
 
   const city = useMemo(() => getCity(cityId), [cityId]);
   const insight = city.insights[parameter];
@@ -278,12 +279,25 @@ export default function Dashboard() {
 
         {/* parameters */}
         <div className="px-5 py-3">
-          <p
-            style={{ fontFamily: "var(--font-mono)" }}
-            className="mb-2 text-[10px] uppercase tracking-widest text-slate-500"
-          >
-            Indices
-          </p>
+          <div className="mb-2 flex items-center justify-between">
+            <p
+              style={{ fontFamily: "var(--font-mono)" }}
+              className="text-[10px] uppercase tracking-widest text-slate-500"
+            >
+              Indices
+            </p>
+            <button
+              onClick={() => setShowIndex((v) => !v)}
+              title={showIndex ? "Hide index layer" : "Show index layer"}
+              className={`rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wide transition ${
+                showIndex
+                  ? "bg-teal-400/20 text-teal-200"
+                  : "bg-white/10 text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              {showIndex ? "ON" : "OFF"}
+            </button>
+          </div>
           <div className="space-y-1">
             {PARAMETERS.map((p) => {
               const active = p.key === parameter;
@@ -432,6 +446,7 @@ export default function Dashboard() {
                       setFeatureModal(f);
                     }}
                     showUHI={showUHI}
+                    showIndex={showIndex}
                   />
                 </div>
               </div>

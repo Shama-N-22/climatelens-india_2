@@ -34,6 +34,7 @@ interface MapViewProps {
   showHospitals?: boolean;
   showWards?: boolean;
   showUHI?: boolean;
+  showIndex?: boolean;
   onSelectFeature?: (
     f: { type: "hospital" | "ward"; props: Record<string, any> } | null,
   ) => void;
@@ -66,6 +67,7 @@ export default function MapView({
   showHospitals = false,
   showWards = false,
   showUHI = false,
+  showIndex = true,
   onSelectFeature,
 }: MapViewProps) {
   const [basemapId, setBasemapId] = useState(DEFAULT_BASEMAP.id);
@@ -194,7 +196,7 @@ export default function MapView({
           maxZoom={basemap.maxZoom ?? 19}
         />
 
-        {status === "ok" && tileUrl && (
+        {showIndex && status === "ok" && tileUrl && (
           <TileLayer
             key={`${cityId}-${parameter}-${year}-${month}`}
             url={tileUrl}
@@ -288,9 +290,9 @@ export default function MapView({
       </MapContainer>
 
       {/* opacity sliders: index layer + UHI */}
-      {(status === "ok" || showUHI) && (
+      {((showIndex && status === "ok") || showUHI) && (
         <div className="absolute left-4 top-4 z-[1000] flex w-56 flex-col gap-2">
-          {status === "ok" && (
+          {!showUHI && showIndex && status === "ok" && (
             <div className="rounded-xl border border-white/10 bg-[#0B1220]/80 p-3 shadow-xl backdrop-blur-md">
               <div className="mb-2 flex items-center justify-between">
                 <span
@@ -346,7 +348,7 @@ export default function MapView({
         </div>
       )}
 
-      {status !== "ok" && (
+      {showIndex && status !== "ok" && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 z-[1000] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-[#0B1220]/85 px-4 py-3 text-center shadow-2xl backdrop-blur-md">
           <p className="text-sm font-medium text-slate-100">
             {monthLabel(month)} {year}
