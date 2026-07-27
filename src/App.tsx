@@ -4,6 +4,8 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
 import Platform from "./pages/Platform";
+import Flood from "./pages/Flood";
+import Landslide from "./pages/Landslide";
 
 export default function App() {
   return (
@@ -11,6 +13,8 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/platform" element={<Platform />} />
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/flood" element={<Flood />} />
+      <Route path="/landslide" element={<Landslide />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -1,8 +1,12 @@
 // File: src/components/map/MapView.tsx
 //
 // Map panel. Index tiles + buildings come from the backend. Hospitals and ward
-// boundaries are vector overlays loaded from /public/geojson (clickable, with
-// attributes in popups). All overlays are toggled from the "Layers" dropdown.
+// boundaries are vector overlays from /public/geojson.
+// Backward compatible: Heat & Health dashboard passes nothing new.
+// New props (used by Flood / Landslide):
+//   hotspotLabel  - label for the hotspot opacity slider ("Flood Hotspot" etc.)
+//   comingSoon    - true = skip index/hotspot fetch, show "awaiting data" badge
+//                   (basemap + buildings/hospitals/wards still work)
 
 import { useState, useEffect } from "react";
 import {
@@ -24,7 +28,7 @@ import "leaflet/dist/leaflet.css";
 const DEFAULT_CENTER: [number, number] = [23.0225, 72.5714];
 
 interface MapViewProps {
-  parameter?: ParamKey;
+  parameter?: string;
   center?: [number, number];
   zoom?: number;
   cityId?: string;
@@ -35,6 +39,8 @@ interface MapViewProps {
   showWards?: boolean;
   showUHI?: boolean;
   showIndex?: boolean;
+  hotspotLabel?: string;
+  comingSoon?: boolean;
   onSelectFeature?: (
     f: { type: "hospital" | "ward"; props: Record<string, any> } | null,
   ) => void;
@@ -54,7 +60,7 @@ function FlyToCity({
   return null;
 }
 
-type Status = "loading" | "ok" | "empty" | "error";
+type Status = "loading" | "ok" | "empty" | "error" | "soon";
 
 export default function MapView({
   parameter = "ndvi",
@@ -68,6 +74,8 @@ export default function MapView({
   showWards = false,
   showUHI = false,
   showIndex = true,
+  hotspotLabel = "UHI",
+  comingSoon = false,
   onSelectFeature,
 }: MapViewProps) {
   const [basemapId, setBasemapId] = useState(DEFAULT_BASEMAP.id);
@@ -84,6 +92,11 @@ export default function MapView({
 
   // index tiles
   useEffect(() => {
+    if (comingSoon) {
+      setStatus("soon");
+      setTileUrl(null);
+      return;
+    }
     let cancelled = false;
     setStatus("loading");
     setTileUrl(null);
@@ -104,7 +117,7 @@ export default function MapView({
     return () => {
       cancelled = true;
     };
-  }, [parameter, cityId, year, month]);
+  }, [parameter, cityId, year, month, comingSoon]);
 
   // buildings (backend tile)
   useEffect(() => {
@@ -123,9 +136,9 @@ export default function MapView({
     };
   }, [showBuildings, cityId]);
 
-  // UHI hotspots (backend tile)
+  // hotspot (backend tile) — skipped when comingSoon
   useEffect(() => {
-    if (!showUHI) return;
+    if (comingSoon || !showUHI) return;
     let cancelled = false;
     fetch(`${API_BASE}/api/uhi?city=${cityId}`)
       .then((r) => r.json())
@@ -138,7 +151,7 @@ export default function MapView({
     return () => {
       cancelled = true;
     };
-  }, [showUHI, cityId]);
+  }, [showUHI, cityId, comingSoon]);
 
   // hospitals (local geojson)
   useEffect(() => {
@@ -160,7 +173,7 @@ export default function MapView({
     };
   }, [showHospitals, cityId]);
 
-  // wards (local geojson; only Mumbai & Hyderabad have them)
+  // wards (local geojson)
   useEffect(() => {
     if (!showWards) {
       setWards(null);
@@ -196,7 +209,7 @@ export default function MapView({
           maxZoom={basemap.maxZoom ?? 19}
         />
 
-        {showIndex && status === "ok" && tileUrl && (
+        {!comingSoon && showIndex && status === "ok" && tileUrl && (
           <TileLayer
             key={`${cityId}-${parameter}-${year}-${month}`}
             url={tileUrl}
@@ -217,11 +230,11 @@ export default function MapView({
           />
         )}
 
-        {showUHI && uhiUrl && (
+        {!comingSoon && showUHI && uhiUrl && (
           <TileLayer
             key={`uhi-${cityId}`}
             url={uhiUrl}
-            attribution="UHI Hotspots &middot; Earth Engine"
+            attribution="Hotspots &middot; Earth Engine"
             opacity={uhiOpacity}
             zIndex={500}
             maxZoom={18}
@@ -289,8 +302,8 @@ export default function MapView({
         <ZoomControl position="bottomright" />
       </MapContainer>
 
-      {/* opacity sliders: index layer + UHI */}
-      {((showIndex && status === "ok") || showUHI) && (
+      {/* opacity sliders (hidden while coming soon) */}
+      {!comingSoon && ((showIndex && status === "ok") || showUHI) && (
         <div className="absolute left-4 top-4 z-[1000] flex w-56 flex-col gap-2">
           {!showUHI && showIndex && status === "ok" && (
             <div className="rounded-xl border border-white/10 bg-[#0B1220]/80 p-3 shadow-xl backdrop-blur-md">
@@ -326,7 +339,7 @@ export default function MapView({
                   style={{ fontFamily: "var(--font-mono)" }}
                   className="text-[10px] uppercase tracking-wider text-slate-400"
                 >
-                  UHI opacity
+                  {hotspotLabel} opacity
                 </span>
                 <span
                   style={{ fontFamily: "var(--font-mono)" }}
@@ -348,7 +361,23 @@ export default function MapView({
         </div>
       )}
 
-      {showIndex && status !== "ok" && (
+      {/* coming soon badge */}
+      {comingSoon && (
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-[1000] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-[#0B1220]/85 px-4 py-3 text-center shadow-2xl backdrop-blur-md">
+          <p className="text-sm font-medium text-slate-100">
+            Live data layers coming soon
+          </p>
+          <p
+            style={{ fontFamily: "var(--font-mono)" }}
+            className="mt-1 text-[11px] text-slate-400"
+          >
+            awaiting GEE datasets · map is interactive
+          </p>
+        </div>
+      )}
+
+      {/* index status badge (Heat & Health) */}
+      {!comingSoon && showIndex && status !== "ok" && status !== "soon" && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 z-[1000] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-[#0B1220]/85 px-4 py-3 text-center shadow-2xl backdrop-blur-md">
           <p className="text-sm font-medium text-slate-100">
             {monthLabel(month)} {year}
@@ -368,9 +397,11 @@ export default function MapView({
         <BasemapSwitcher value={basemapId} onChange={setBasemapId} />
       </div>
 
-      <div className="absolute bottom-6 right-4 z-[1000]">
-        <MapLegend parameter={parameter} />
-      </div>
+      {!comingSoon && (
+        <div className="absolute bottom-6 right-4 z-[1000]">
+          <MapLegend parameter={parameter as ParamKey} />
+        </div>
+      )}
     </div>
   );
 }
