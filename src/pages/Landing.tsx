@@ -8,6 +8,8 @@ import {
   Thermometer,
   HeartPulse,
   Leaf,
+  Waves,
+  Mountain,
   ChevronDown,
   Building2,
   Users,
@@ -58,6 +60,20 @@ const MODULES = [
     note: "NDBI · NDWI change",
     color: "text-teal-300",
     href: "https://www.usgs.gov/landsat-missions",
+  },
+  {
+    icon: Waves,
+    title: "Flood",
+    note: "Flood risk & management",
+    color: "text-sky-300",
+    href: "https://www.floodmanagement.info/",
+  },
+  {
+    icon: Mountain,
+    title: "Landslide",
+    note: "Landslide hazard & response",
+    color: "text-orange-300",
+    href: "https://www.gsi.gov.in/webcenter/portal/OCBIS/pageGeoInfo/pageLandslideHazard",
   },
 ];
 
@@ -230,7 +246,7 @@ export default function Landing() {
           {/* floating climate cards — now clickable, open the dashboard */}
           <div
             id="modules"
-            className="mt-20 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            className="mt-20 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
           >
             {MODULES.map((m, i) => (
               <motion.a
