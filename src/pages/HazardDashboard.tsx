@@ -205,7 +205,7 @@ export default function HazardDashboard({ config }: { config: HazardConfig }) {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1220] text-slate-200">
       <CornerLogo />
-      <aside className="flex w-72 flex-col border-r border-white/10 bg-[#0d1526]/80">
+      <aside className="flex w-72 flex-col overflow-y-auto border-r border-white/10 bg-[#0d1526]/80">
         <div className="px-5 py-5">
           <Wordmark />
         </div>
@@ -314,7 +314,7 @@ export default function HazardDashboard({ config }: { config: HazardConfig }) {
           </div>
         </div>
 
-        <div className="mt-auto border-t border-white/10 p-4">
+        <div className="mt-auto shrink-0 border-t border-white/10 p-4">
           <button
             onClick={() => navigate("/")}
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
