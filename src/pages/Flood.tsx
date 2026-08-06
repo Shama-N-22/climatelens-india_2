@@ -1,42 +1,55 @@
 // File: src/pages/Flood.tsx
-import { Droplets, Waves, CloudRain } from "lucide-react";
+import {
+  Droplets,
+  CloudRain,
+  Map,
+  Mountain,
+  TrendingUp,
+  Waves,
+} from "lucide-react";
 import HazardDashboard, { type HazardConfig } from "./HazardDashboard";
 
 const config: HazardConfig = {
   title: "Flood",
-  hotspotLabel: "Flood Hotspot",
+  hotspotLabel: "Flood Susceptibility",
   hotspotIcon: Waves,
   parameters: [
     {
-      key: "rp5",
-      label: "5-Year Return Period",
+      key: "river",
+      label: "River",
       icon: Droplets,
-      blurb: "Flood extent expected once every 5 years on average.",
+      blurb: "River network and proximity to water channels.",
     },
     {
-      key: "rp10",
-      label: "10-Year Return Period",
-      icon: Droplets,
-      blurb: "Flood extent expected once every 10 years on average.",
-    },
-    {
-      key: "rp50",
-      label: "50-Year Return Period",
-      icon: Waves,
-      blurb: "Flood extent expected once every 50 years on average.",
-    },
-    {
-      key: "rp100",
-      label: "100-Year Return Period",
+      key: "rainfall",
+      label: "Rainfall",
       icon: CloudRain,
-      blurb: "Flood extent expected once every 100 years on average.",
+      blurb: "Rainfall intensity and accumulation.",
+    },
+    {
+      key: "lulc",
+      label: "LULC",
+      icon: Map,
+      blurb: "Land use / land cover classification.",
+    },
+    {
+      key: "dem",
+      label: "DEM",
+      icon: Mountain,
+      blurb: "Digital elevation model — terrain height above sea level.",
+    },
+    {
+      key: "slope",
+      label: "Slope",
+      icon: TrendingUp,
+      blurb: "Terrain steepness derived from the DEM.",
     },
   ],
   insight: {
     summary:
-      "Flood return-period layers and the flood hotspot model are being prepared. The map, buildings, hospitals and ward overlays are already live for all three cities.",
+      "Flood susceptibility layers (River, Rainfall, LULC, DEM, Slope) are being prepared for India scale. The map, buildings, hospitals and ward overlays are already live.",
     recommendation:
-      "Connect the hydrological return-period datasets to activate live flood layers.",
+      "Connect the river, rainfall, land-cover and terrain datasets to activate live flood layers.",
     priority: "High",
     budget: "—",
     improvement: "Pending data",
