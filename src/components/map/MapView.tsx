@@ -400,7 +400,7 @@ export default function MapView({
         <BasemapSwitcher value={basemapId} onChange={setBasemapId} />
       </div>
 
-      {!comingSoon && (
+      {!comingSoon && showIndex && (
         <div className="absolute bottom-6 right-4 z-[1000]">
           <MapLegend parameter={parameter as ParamKey} />
         </div>
