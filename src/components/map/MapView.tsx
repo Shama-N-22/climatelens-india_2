@@ -199,6 +199,7 @@ export default function MapView({
         center={center}
         zoom={zoom}
         zoomControl={false}
+        preferCanvas={true}
         className="h-full w-full bg-[#0b1220]"
       >
         <TileLayer
@@ -254,9 +255,11 @@ export default function MapView({
             onEachFeature={(f, layer) => {
               const p = f.properties || {};
               const label =
-                p.ward_no != null
-                  ? `Ward ${p.ward_no}`
-                  : `Ward ${p.name ?? ""}`;
+                p.village != null
+                  ? `${p.village}${p.district ? ` (${p.district})` : ""}`
+                  : p.ward_no != null
+                    ? `Ward ${p.ward_no}`
+                    : `Ward ${p.name ?? ""}`;
               layer.bindTooltip(label, { sticky: true, direction: "top" });
               layer.on("click", (e: any) => {
                 if (e?.originalEvent) L.DomEvent.stop(e.originalEvent);
