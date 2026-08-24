@@ -255,11 +255,13 @@ export default function MapView({
             onEachFeature={(f, layer) => {
               const p = f.properties || {};
               const label =
-                p.village != null
-                  ? `${p.village}${p.district ? ` (${p.district})` : ""}`
-                  : p.ward_no != null
-                    ? `Ward ${p.ward_no}`
-                    : `Ward ${p.name ?? ""}`;
+                p.district != null
+                  ? p.district
+                  : p.village != null
+                    ? `${p.village}${p.district ? ` (${p.district})` : ""}`
+                    : p.ward_no != null
+                      ? `Ward ${p.ward_no}`
+                      : `Ward ${p.name ?? ""}`;
               layer.bindTooltip(label, { sticky: true, direction: "top" });
               layer.on("click", (e: any) => {
                 if (e?.originalEvent) L.DomEvent.stop(e.originalEvent);
