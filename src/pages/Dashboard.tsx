@@ -269,12 +269,6 @@ export default function Dashboard() {
                 }`}
               >
                 <span>{c.name}</span>
-                <span
-                  style={{ fontFamily: "var(--font-mono)" }}
-                  className="text-[10px] text-slate-500"
-                >
-                  {c.state}
-                </span>
               </button>
             ))}
           </div>
