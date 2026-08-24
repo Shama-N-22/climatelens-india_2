@@ -236,9 +236,9 @@ export default function Dashboard() {
   const city = useMemo(() => getCity(cityId), [cityId]);
   const insight = city.insights[parameter];
   const activeParam = PARAMETERS.find((p) => p.key === parameter)!;
-  // Telangana is a state (village-level boundaries), other cities use wards
+  // Telangana is now district-wise (per Prathyu/Binu sir), other cities use wards
   const wardsLabel =
-    cityId === "telangana" ? "Village boundaries" : "Ward boundaries";
+    cityId === "telangana" ? "District boundaries" : "Ward boundaries";
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1220] text-slate-200">
@@ -255,7 +255,7 @@ export default function Dashboard() {
             style={{ fontFamily: "var(--font-mono)" }}
             className="mb-2 text-[10px] uppercase tracking-widest text-slate-500"
           >
-            Cities
+            States
           </p>
           <div className="space-y-1">
             {CITIES.map((c) => (

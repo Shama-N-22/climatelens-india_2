@@ -46,8 +46,8 @@ export interface City {
 export const CITIES: City[] = [
   {
     id: "ahmedabad",
-    name: "Ahmedabad",
-    state: "Gujarat",
+    name: "Gujarat",
+    state: "Ahmedabad",
     center: [23.0225, 72.5714],
     zoom: 11,
     kpis: [
@@ -204,8 +204,8 @@ export const CITIES: City[] = [
   },
   {
     id: "mumbai",
-    name: "Mumbai",
-    state: "Maharashtra",
+    name: "Maharashtra",
+    state: "Mumbai",
     center: [19.076, 72.8777],
     zoom: 11,
     kpis: [
