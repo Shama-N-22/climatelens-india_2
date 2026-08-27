@@ -139,7 +139,9 @@ export function FeaturePanel({
             <Stat
               icon={Thermometer}
               label="Max LST"
-              value="—"
+              value={
+                p.max_lst != null ? `${Number(p.max_lst).toFixed(1)}°C` : "—"
+              }
               accent="text-rose-400"
             />
             <Stat
@@ -295,7 +297,11 @@ export function FeatureModal({
                 <Stat
                   icon={Thermometer}
                   label="Max temperature (LST)"
-                  value="—"
+                  value={
+                    p.max_lst != null
+                      ? `${Number(p.max_lst).toFixed(1)}°C`
+                      : "—"
+                  }
                   accent="text-rose-400"
                 />
                 <div className="col-span-2">

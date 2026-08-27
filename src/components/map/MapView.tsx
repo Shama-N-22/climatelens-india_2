@@ -87,6 +87,10 @@ export default function MapView({
   const [uhiUrl, setUhiUrl] = useState<string | null>(null);
   const [hospitals, setHospitals] = useState<any>(null);
   const [wards, setWards] = useState<any>(null);
+  const [districtStats, setDistrictStats] = useState<Record<
+    string,
+    number
+  > | null>(null);
 
   const basemap = BASEMAPS.find((b) => b.id === basemapId) ?? DEFAULT_BASEMAP;
 
@@ -193,6 +197,30 @@ export default function MapView({
     };
   }, [showWards, cityId]);
 
+  // per-district max LST (Telangana's district popup "Max temperature" stat).
+  // Ahmedabad/Mumbai's ward popups don't show this field, so no need to fetch
+  // it for them.
+  useEffect(() => {
+    if (cityId !== "telangana") {
+      setDistrictStats(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(
+      `${API_BASE}/api/district-stats?city=${cityId}&year=${year}&month=${month}`,
+    )
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d && d.stats) setDistrictStats(d.stats);
+      })
+      .catch(() => {
+        if (!cancelled) setDistrictStats(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cityId, year, month]);
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
@@ -265,7 +293,13 @@ export default function MapView({
               layer.bindTooltip(label, { sticky: true, direction: "top" });
               layer.on("click", (e: any) => {
                 if (e?.originalEvent) L.DomEvent.stop(e.originalEvent);
-                onSelectFeature && onSelectFeature({ type: "ward", props: p });
+                const maxLst =
+                  p.district != null && districtStats
+                    ? districtStats[p.district]
+                    : undefined;
+                const enriched = maxLst != null ? { ...p, max_lst: maxLst } : p;
+                onSelectFeature &&
+                  onSelectFeature({ type: "ward", props: enriched });
               });
             }}
           />
