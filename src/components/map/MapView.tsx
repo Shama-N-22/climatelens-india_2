@@ -91,6 +91,10 @@ export default function MapView({
     string,
     number
   > | null>(null);
+  const [buildingCounts, setBuildingCounts] = useState<Record<
+    string,
+    number
+  > | null>(null);
 
   const basemap = BASEMAPS.find((b) => b.id === basemapId) ?? DEFAULT_BASEMAP;
 
@@ -221,6 +225,28 @@ export default function MapView({
     };
   }, [cityId, year, month]);
 
+  // per-district building counts (Telangana's "Number of buildings" stat).
+  // No year/month dependency - building footprints don't change over time,
+  // so this only needs to fetch once per city.
+  useEffect(() => {
+    if (cityId !== "telangana") {
+      setBuildingCounts(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`${API_BASE}/api/district-building-counts?city=${cityId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d && d.counts) setBuildingCounts(d.counts);
+      })
+      .catch(() => {
+        if (!cancelled) setBuildingCounts(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cityId]);
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
@@ -297,7 +323,17 @@ export default function MapView({
                   p.district != null && districtStats
                     ? districtStats[p.district]
                     : undefined;
-                const enriched = maxLst != null ? { ...p, max_lst: maxLst } : p;
+                const buildingCount =
+                  p.district != null && buildingCounts
+                    ? buildingCounts[p.district]
+                    : undefined;
+                const enriched = {
+                  ...p,
+                  ...(maxLst != null ? { max_lst: maxLst } : {}),
+                  ...(buildingCount != null
+                    ? { building_count: buildingCount }
+                    : {}),
+                };
                 onSelectFeature &&
                   onSelectFeature({ type: "ward", props: enriched });
               });

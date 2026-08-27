@@ -25,6 +25,33 @@ export interface SelectedFeature {
 const fmtPop = (v: any) =>
   v != null && v > 0 ? Number(v).toLocaleString("en-IN") : "—";
 
+// Buckets a max-LST reading into a heat-risk label using IMD's (India
+// Meteorological Department) official Heat Wave criteria for plains regions
+// - Telangana has no hilly or coastal districts, so the plains thresholds
+// apply statewide: Heat Wave >= 40C, Severe Heat Wave >= 45C (declared
+// regardless of the climatological "normal" departure calculation IMD also
+// uses, since we don't have per-district historical baselines to compute
+// that departure). Source: IMD / NDMA published heat wave criteria.
+// The Low/Medium split below 40C is our own added buffer for a smoother
+// 4-tier scale - IMD itself only formally distinguishes Heat Wave vs. not.
+//
+// IMPORTANT CAVEAT: IMD's thresholds are for AIR temperature (2m, shaded
+// station). Our input here is LAND SURFACE temperature from satellite
+// thermal bands, which commonly reads several degrees hotter than air
+// temperature over bare soil/urban surfaces. Applying IMD's exact cutoffs
+// to LST likely over-classifies risk. This is a reasonable reference
+// framework, not a validated equivalence - flag this distinction if this
+// classification is presented to anyone evaluating it closely (a proper
+// fix would calibrate LST against real air-temp station data for Telangana).
+function heatRiskFromLST(lst: any): string | null {
+  if (lst == null) return null;
+  const v = Number(lst);
+  if (v < 35) return "Low";
+  if (v < 40) return "Medium";
+  if (v < 45) return "High"; // IMD Heat Wave threshold (plains): >= 40C
+  return "Critical"; // IMD Severe Heat Wave threshold: >= 45C
+}
+
 function Stat({
   icon: Icon,
   label,
@@ -126,10 +153,18 @@ export function FeaturePanel({
             <Stat
               icon={HeartPulse}
               label="Hospitals"
-              value={p.hospital_count ?? 0}
+              value={p.hospital_count ?? "—"}
               accent="text-orange-400"
             />
-            <Stat icon={Building2} label="Buildings" value="—" />
+            <Stat
+              icon={Building2}
+              label="Buildings"
+              value={
+                p.building_count != null
+                  ? Number(p.building_count).toLocaleString("en-IN")
+                  : "—"
+              }
+            />
             <Stat
               icon={Droplets}
               label="Drinking water"
@@ -147,7 +182,7 @@ export function FeaturePanel({
             <Stat
               icon={Grid3x3}
               label="Heat Risk"
-              value={p.zone || "—"}
+              value={p.zone || heatRiskFromLST(p.max_lst) || "—"}
               accent="text-amber-300"
             />
           </>
@@ -284,10 +319,18 @@ export function FeatureModal({
                 <Stat
                   icon={HeartPulse}
                   label="Hospital count"
-                  value={p.hospital_count ?? 0}
+                  value={p.hospital_count ?? "—"}
                   accent="text-orange-400"
                 />
-                <Stat icon={Building2} label="Number of buildings" value="—" />
+                <Stat
+                  icon={Building2}
+                  label="Number of buildings"
+                  value={
+                    p.building_count != null
+                      ? Number(p.building_count).toLocaleString("en-IN")
+                      : "—"
+                  }
+                />
                 <Stat
                   icon={Droplets}
                   label="Drinking water facility"
@@ -308,14 +351,14 @@ export function FeatureModal({
                   <Stat
                     icon={Grid3x3}
                     label="Heat Risk"
-                    value={p.zone || "—"}
+                    value={p.zone || heatRiskFromLST(p.max_lst) || "—"}
                     accent="text-amber-300"
                   />
                 </div>
               </div>
               <p className="mt-4 text-xs text-slate-500">
-                Buildings, drinking-water and max-LST fill in as those datasets
-                are added.
+                Drinking-water and hospital data fill in as those datasets are
+                added.
               </p>
             </>
           )}
