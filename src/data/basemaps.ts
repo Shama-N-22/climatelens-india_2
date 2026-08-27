@@ -15,7 +15,7 @@ export const BASEMAPS: Basemap[] = [
   {
     id: "voyager",
     label: "Voyager",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_2bdl_1_90c682758c2e3993364a4dc7",
     attribution: "&copy; OpenStreetMap &copy; CARTO",
     subdomains: "abcd",
     maxZoom: 20,
@@ -31,7 +31,7 @@ export const BASEMAPS: Basemap[] = [
   {
     id: "dark",
     label: "Dark",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=cb1_2bdl_1_90c682758c2e3993364a4dc7",
     attribution: "&copy; OpenStreetMap &copy; CARTO",
     subdomains: "abcd",
     maxZoom: 20,
@@ -39,7 +39,7 @@ export const BASEMAPS: Basemap[] = [
   {
     id: "light",
     label: "Light",
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png?key=cb1_2bdl_1_90c682758c2e3993364a4dc7",
     attribution: "&copy; OpenStreetMap &copy; CARTO",
     subdomains: "abcd",
     maxZoom: 20,
@@ -53,14 +53,12 @@ export const BASEMAPS: Basemap[] = [
   },
 ];
 
-// CARTO's basemaps.cartocdn.com raster endpoint (used by voyager/dark/light
-// above) now requires a paid/free API key that this project doesn't have -
-// defaulting to OSM since it needs no key and works immediately. The
-// voyager/dark/light options are left in the switcher below but will show
-// CARTO's "API KEY REQUIRED" watermark until someone adds a real key from
-// carto.com/basemaps/apikey.
+// Real CARTO Basemaps API key (free tier, 5M tile requests/month) is now
+// appended to the voyager/dark/light URLs above, so the "API key required"
+// watermark is gone. Voyager restored as the default, matching how it
+// looked before CARTO started requiring a key.
 export const DEFAULT_BASEMAP =
-  BASEMAPS.find((b) => b.id === "osm") ?? BASEMAPS[0];
+  BASEMAPS.find((b) => b.id === "voyager") ?? BASEMAPS[0];
 
 // ---- Live Google Earth Engine index layers, keyed by the sidebar index ----
 // Selecting an index in the sidebar shows the matching layer here, so the map
