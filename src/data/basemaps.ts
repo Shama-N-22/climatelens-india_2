@@ -53,7 +53,14 @@ export const BASEMAPS: Basemap[] = [
   },
 ];
 
-export const DEFAULT_BASEMAP = BASEMAPS[0];
+// CARTO's basemaps.cartocdn.com raster endpoint (used by voyager/dark/light
+// above) now requires a paid/free API key that this project doesn't have -
+// defaulting to OSM since it needs no key and works immediately. The
+// voyager/dark/light options are left in the switcher below but will show
+// CARTO's "API KEY REQUIRED" watermark until someone adds a real key from
+// carto.com/basemaps/apikey.
+export const DEFAULT_BASEMAP =
+  BASEMAPS.find((b) => b.id === "osm") ?? BASEMAPS[0];
 
 // ---- Live Google Earth Engine index layers, keyed by the sidebar index ----
 // Selecting an index in the sidebar shows the matching layer here, so the map
