@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import {
   INDIAN_STATES,
-  INDIA_VIEW,
+  getStateView,
   getCityByState,
   type Kpi,
   type Status,
@@ -244,8 +244,11 @@ export default function Dashboard() {
   const city = useMemo(() => getCityByState(stateName), [stateName]);
   const hasData = city !== null;
   const cityId = city ? city.id : stateName.toLowerCase().replace(/\s+/g, "-");
-  const center = city ? city.center : INDIA_VIEW.center;
-  const zoom = city ? city.zoom : INDIA_VIEW.zoom;
+  // States with live data use their own centre/zoom; every other state still
+  // flies the map to its own location using the dropdown's coordinates.
+  const stateView = useMemo(() => getStateView(stateName), [stateName]);
+  const center = city ? city.center : stateView.center;
+  const zoom = city ? city.zoom : stateView.zoom;
   const insight = city ? city.insights[parameter] : null;
   const activeParam = PARAMETERS.find((p) => p.key === parameter)!;
   // Telangana is district-wise (per Prathyu/Binu sir), other cities use wards
@@ -275,8 +278,12 @@ export default function Dashboard() {
             className="w-full cursor-pointer rounded-lg border border-white/10 bg-[#0f1a2e] px-3 py-2 text-sm text-slate-200 outline-none transition hover:border-white/25 focus:border-amber-300/40"
           >
             {INDIAN_STATES.map((s) => (
-              <option key={s} value={s} className="bg-[#0f1a2e] text-slate-200">
-                {s}
+              <option
+                key={s.name}
+                value={s.name}
+                className="bg-[#0f1a2e] text-slate-200"
+              >
+                {s.name}
               </option>
             ))}
           </select>
