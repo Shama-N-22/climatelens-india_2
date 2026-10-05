@@ -1,5 +1,5 @@
 // File: src/pages/Dashboard.tsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import {
   INDIAN_STATES,
+  STATE_DISTRICTS,
   getStateView,
   getCityByState,
   type Kpi,
@@ -222,9 +223,40 @@ function KpiModal({ kpi, onClose }: { kpi: Kpi; onClose: () => void }) {
   );
 }
 
+// Rough centroid of a GeoJSON Polygon/MultiPolygon — averages its coordinates.
+// Good enough to fly the map to a district; not a true area centroid.
+function geomCentre(geometry: any): [number, number] | null {
+  if (!geometry) return null;
+  let lngSum = 0;
+  let latSum = 0;
+  let count = 0;
+  const walk = (coords: any) => {
+    if (typeof coords[0] === "number") {
+      lngSum += coords[0];
+      latSum += coords[1];
+      count += 1;
+      return;
+    }
+    for (const c of coords) walk(c);
+  };
+  try {
+    walk(geometry.coordinates);
+  } catch {
+    return null;
+  }
+  return count ? [latSum / count, lngSum / count] : null;
+}
+
+interface DistrictEntry {
+  name: string;
+  center: [number, number] | null;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stateName, setStateName] = useState("Telangana");
+  const [districts, setDistricts] = useState<DistrictEntry[]>([]);
+  const [activeDistrict, setActiveDistrict] = useState<string | null>(null);
   const [parameter, setParameter] = useState<ParamKey>("ndvi");
   const [popupKpi, setPopupKpi] = useState<Kpi | null>(null);
   const [year, setYear] = useState(DEFAULT_TIMELINE.year);
@@ -247,13 +279,58 @@ export default function Dashboard() {
   // States with live data use their own centre/zoom; every other state still
   // flies the map to its own location using the dropdown's coordinates.
   const stateView = useMemo(() => getStateView(stateName), [stateName]);
-  const center = city ? city.center : stateView.center;
-  const zoom = city ? city.zoom : stateView.zoom;
+  const selectedDistrict = districts.find((d) => d.name === activeDistrict);
+  const center = selectedDistrict?.center
+    ? selectedDistrict.center
+    : city
+      ? city.center
+      : stateView.center;
+  const zoom = selectedDistrict?.center ? 9 : city ? city.zoom : stateView.zoom;
   const insight = city ? city.insights[parameter] : null;
   const activeParam = PARAMETERS.find((p) => p.key === parameter)!;
   // Telangana is district-wise (per Prathyu/Binu sir), other cities use wards
   const wardsLabel =
     cityId === "telangana" ? "District boundaries" : "Ward boundaries";
+
+  // Districts are read from the same boundary file the map already uses, so a
+  // state's districts appear automatically as soon as its geojson is added to
+  // /public/geojson. States without a file yet simply show an empty list.
+  useEffect(() => {
+    setActiveDistrict(null);
+    // Start from the provisional name list so something shows immediately,
+    // then upgrade to the real boundary data (with centres) if a geojson
+    // exists for this state.
+    const fallback: DistrictEntry[] = (STATE_DISTRICTS[stateName] ?? []).map(
+      (name) => ({ name, center: null }),
+    );
+    setDistricts(fallback);
+
+    let cancelled = false;
+    fetch(`/geojson/wards-${cityId}.geojson`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d || !Array.isArray(d.features)) return;
+        const seen = new Set<string>();
+        const list: DistrictEntry[] = [];
+        for (const f of d.features) {
+          const p = f.properties || {};
+          const name: string | undefined =
+            p.district ?? p.DISTRICT ?? p.name ?? undefined;
+          if (!name || seen.has(name)) continue;
+          seen.add(name);
+          list.push({ name, center: geomCentre(f.geometry) });
+        }
+        if (list.length === 0) return;
+        list.sort((a, b) => a.name.localeCompare(b.name));
+        setDistricts(list);
+      })
+      .catch(() => {
+        /* keep the provisional list */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cityId, stateName]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1220] text-slate-200">
@@ -287,10 +364,50 @@ export default function Dashboard() {
               </option>
             ))}
           </select>
-          {!hasData && (
-            <p className="mt-2 px-1 text-[11px] leading-relaxed text-slate-500">
-              Data for this state is not available yet.
+        </div>
+
+        {/* districts of the selected state */}
+        <div className="px-5 pb-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p
+              style={{ fontFamily: "var(--font-mono)" }}
+              className="text-[10px] uppercase tracking-widest text-slate-500"
+            >
+              Districts
             </p>
+            {districts.length > 0 && (
+              <span
+                style={{ fontFamily: "var(--font-mono)" }}
+                className="text-[10px] text-slate-500"
+              >
+                {districts.length}
+              </span>
+            )}
+          </div>
+
+          {districts.length === 0 ? (
+            <p className="px-1 text-[11px] leading-relaxed text-slate-500">
+              District data for {stateName} is not available yet.
+            </p>
+          ) : (
+            <div className="max-h-56 space-y-0.5 overflow-y-auto pr-1">
+              {districts.map((d) => {
+                const active = d.name === activeDistrict;
+                return (
+                  <button
+                    key={d.name}
+                    onClick={() => setActiveDistrict(active ? null : d.name)}
+                    className={`block w-full truncate rounded-md px-2.5 py-1.5 text-left text-[13px] transition ${
+                      active
+                        ? "bg-amber-400/10 text-amber-200 ring-1 ring-amber-300/30"
+                        : "text-slate-300 hover:bg-white/5"
+                    }`}
+                  >
+                    {d.name}
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
 
