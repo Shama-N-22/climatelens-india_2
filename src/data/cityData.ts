@@ -43,6 +43,55 @@ export interface City {
   insights: Record<ParamKey, Insight>;
 }
 
+// Full list of Indian states and union territories for the sidebar dropdown.
+// Only the states present in CITIES below have live data; the rest are listed
+// so the dropdown is complete, and the dashboard shows an "awaiting data"
+// state when one of them is selected.
+export const INDIAN_STATES: string[] = [
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chhattisgarh",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+  "Andaman and Nicobar Islands",
+  "Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
+  "Jammu and Kashmir",
+  "Ladakh",
+  "Lakshadweep",
+  "Puducherry",
+];
+
+// Map centre/zoom used when a state without live data is selected.
+export const INDIA_VIEW: { center: [number, number]; zoom: number } = {
+  center: [22.5, 79.0],
+  zoom: 5,
+};
+
 export const CITIES: City[] = [
   {
     id: "telangana",
@@ -208,3 +257,7 @@ export const CITIES: City[] = [
 
 export const getCity = (id: string) =>
   CITIES.find((c) => c.id === id) ?? CITIES[0];
+
+// Returns the full City record for a state name, or null if it has no data yet.
+export const getCityByState = (stateName: string): City | null =>
+  CITIES.find((c) => c.name === stateName) ?? null;

@@ -19,7 +19,13 @@ import {
   Flame,
   X,
 } from "lucide-react";
-import { CITIES, getCity, type Kpi, type Status } from "../data/cityData";
+import {
+  INDIAN_STATES,
+  INDIA_VIEW,
+  getCityByState,
+  type Kpi,
+  type Status,
+} from "../data/cityData";
 import type { ParamKey } from "../data/legendRamps";
 import AnimatedCounter from "../components/common/AnimatedCounter";
 import ResizableSplit from "../components/common/ResizableSplit";
@@ -218,7 +224,7 @@ function KpiModal({ kpi, onClose }: { kpi: Kpi; onClose: () => void }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [cityId, setCityId] = useState(CITIES[0].id);
+  const [stateName, setStateName] = useState("Telangana");
   const [parameter, setParameter] = useState<ParamKey>("ndvi");
   const [popupKpi, setPopupKpi] = useState<Kpi | null>(null);
   const [year, setYear] = useState(DEFAULT_TIMELINE.year);
@@ -233,10 +239,16 @@ export default function Dashboard() {
   const [showUHI, setShowUHI] = useState(false);
   const [showIndex, setShowIndex] = useState(true);
 
-  const city = useMemo(() => getCity(cityId), [cityId]);
-  const insight = city.insights[parameter];
+  // Only states present in CITIES have live data. Any other state from the
+  // dropdown still selects and renders the map, but in "awaiting data" mode.
+  const city = useMemo(() => getCityByState(stateName), [stateName]);
+  const hasData = city !== null;
+  const cityId = city ? city.id : stateName.toLowerCase().replace(/\s+/g, "-");
+  const center = city ? city.center : INDIA_VIEW.center;
+  const zoom = city ? city.zoom : INDIA_VIEW.zoom;
+  const insight = city ? city.insights[parameter] : null;
   const activeParam = PARAMETERS.find((p) => p.key === parameter)!;
-  // Telangana is now district-wise (per Prathyu/Binu sir), other cities use wards
+  // Telangana is district-wise (per Prathyu/Binu sir), other cities use wards
   const wardsLabel =
     cityId === "telangana" ? "District boundaries" : "Ward boundaries";
 
@@ -249,7 +261,7 @@ export default function Dashboard() {
           <Wordmark />
         </div>
 
-        {/* cities */}
+        {/* states */}
         <div className="px-5 pb-3 pt-2">
           <p
             style={{ fontFamily: "var(--font-mono)" }}
@@ -257,21 +269,22 @@ export default function Dashboard() {
           >
             States
           </p>
-          <div className="space-y-1">
-            {CITIES.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setCityId(c.id)}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
-                  c.id === cityId
-                    ? "bg-amber-400/10 text-amber-200 ring-1 ring-amber-300/30"
-                    : "text-slate-300 hover:bg-white/5"
-                }`}
-              >
-                <span>{c.name}</span>
-              </button>
+          <select
+            value={stateName}
+            onChange={(e) => setStateName(e.target.value)}
+            className="w-full cursor-pointer rounded-lg border border-white/10 bg-[#0f1a2e] px-3 py-2 text-sm text-slate-200 outline-none transition hover:border-white/25 focus:border-amber-300/40"
+          >
+            {INDIAN_STATES.map((s) => (
+              <option key={s} value={s} className="bg-[#0f1a2e] text-slate-200">
+                {s}
+              </option>
             ))}
-          </div>
+          </select>
+          {!hasData && (
+            <p className="mt-2 px-1 text-[11px] leading-relaxed text-slate-500">
+              Data for this state is not available yet.
+            </p>
+          )}
         </div>
 
         {/* parameters */}
@@ -366,15 +379,15 @@ export default function Dashboard() {
               style={{ fontFamily: "var(--font-display)" }}
               className="text-lg font-semibold text-slate-50"
             >
-              {city.name}{" "}
+              {stateName}{" "}
               <span className="text-slate-500">/ {activeParam.label}</span>
             </h1>
             <p
               style={{ fontFamily: "var(--font-mono)" }}
               className="text-[11px] text-slate-500"
             >
-              {city.center[0].toFixed(3)}°N, {city.center[1].toFixed(3)}°E ·
-              live
+              {center[0].toFixed(3)}°N, {center[1].toFixed(3)}°E ·{" "}
+              {hasData ? "live" : "awaiting data"}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -418,22 +431,25 @@ export default function Dashboard() {
             defaultRight={420}
             left={
               <div className="flex flex-col gap-4 pr-4">
-                <div className="grid grid-cols-4 gap-3">
-                  {city.kpis.slice(0, 8).map((k, i) => (
-                    <KpiCard
-                      key={k.key + cityId}
-                      kpi={k}
-                      index={i}
-                      onOpen={setPopupKpi}
-                    />
-                  ))}
-                </div>
+                {city && (
+                  <div className="grid grid-cols-4 gap-3">
+                    {city.kpis.slice(0, 8).map((k, i) => (
+                      <KpiCard
+                        key={k.key + cityId}
+                        kpi={k}
+                        index={i}
+                        onOpen={setPopupKpi}
+                      />
+                    ))}
+                  </div>
+                )}
                 <div className="relative h-[820px] overflow-hidden rounded-2xl border border-white/10">
                   <MapView
                     parameter={parameter}
-                    center={city.center}
-                    zoom={city.zoom}
-                    cityId={city.id}
+                    center={center}
+                    zoom={zoom}
+                    cityId={cityId}
+                    comingSoon={!hasData}
                     year={year}
                     month={month}
                     showBuildings={showBuildings}
@@ -475,40 +491,54 @@ export default function Dashboard() {
                       >
                         AI Insight
                       </span>
-                      <span className="ml-auto rounded-full bg-teal-400/10 px-2 py-0.5 text-[10px] text-teal-200">
-                        {insight.confidence}% conf.
-                      </span>
+                      {insight && (
+                        <span className="ml-auto rounded-full bg-teal-400/10 px-2 py-0.5 text-[10px] text-teal-200">
+                          {insight.confidence}% conf.
+                        </span>
+                      )}
                     </div>
-                    <p className="text-sm leading-relaxed text-slate-300">
-                      {insight.summary}
-                    </p>
-                    <div className="mt-3 rounded-lg border border-white/10 bg-[#0b1220]/60 p-3">
-                      <p className="text-xs font-medium uppercase tracking-wider text-amber-300/80">
-                        Recommendation
-                      </p>
-                      <p className="mt-1 text-sm text-slate-200">
-                        {insight.recommendation}
-                      </p>
-                    </div>
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                      {[
-                        { l: "Priority", v: insight.priority },
-                        { l: "Budget", v: insight.budget },
-                        { l: "Impact", v: insight.improvement },
-                      ].map((x) => (
-                        <div key={x.l} className="rounded-lg bg-white/5 p-2">
-                          <p
-                            style={{ fontFamily: "var(--font-mono)" }}
-                            className="text-[9px] uppercase tracking-wider text-slate-500"
-                          >
-                            {x.l}
+                    {insight ? (
+                      <>
+                        <p className="text-sm leading-relaxed text-slate-300">
+                          {insight.summary}
+                        </p>
+                        <div className="mt-3 rounded-lg border border-white/10 bg-[#0b1220]/60 p-3">
+                          <p className="text-xs font-medium uppercase tracking-wider text-amber-300/80">
+                            Recommendation
                           </p>
-                          <p className="mt-0.5 text-xs font-semibold text-slate-100">
-                            {x.v}
+                          <p className="mt-1 text-sm text-slate-200">
+                            {insight.recommendation}
                           </p>
                         </div>
-                      ))}
-                    </div>
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                          {[
+                            { l: "Priority", v: insight.priority },
+                            { l: "Budget", v: insight.budget },
+                            { l: "Impact", v: insight.improvement },
+                          ].map((x) => (
+                            <div
+                              key={x.l}
+                              className="rounded-lg bg-white/5 p-2"
+                            >
+                              <p
+                                style={{ fontFamily: "var(--font-mono)" }}
+                                className="text-[9px] uppercase tracking-wider text-slate-500"
+                              >
+                                {x.l}
+                              </p>
+                              <p className="mt-0.5 text-xs font-semibold text-slate-100">
+                                {x.v}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm leading-relaxed text-slate-400">
+                        Insights for {stateName} will appear once the data for
+                        this state is added.
+                      </p>
+                    )}
                   </motion.div>
                 </AnimatePresence>
 
@@ -523,7 +553,12 @@ export default function Dashboard() {
                     </span>
                   </div>
                   <div className="space-y-2.5">
-                    {city.alerts.map((a) => {
+                    {!city && (
+                      <p className="text-xs leading-relaxed text-slate-500">
+                        No alerts yet for {stateName}.
+                      </p>
+                    )}
+                    {(city?.alerts ?? []).map((a) => {
                       const s = STATUS_STYLES[a.severity];
                       return (
                         <div
