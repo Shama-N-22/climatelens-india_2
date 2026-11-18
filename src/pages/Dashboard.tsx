@@ -270,6 +270,14 @@ export default function Dashboard() {
   );
   const [showUHI, setShowUHI] = useState(false);
   const [showIndex, setShowIndex] = useState(true);
+  // ---- ADDED Nov 2026: all-India terrain & environment layers ----
+  const [showRivers, setShowRivers] = useState(false);
+  const [showRainfall, setShowRainfall] = useState(false);
+  const [showLulc, setShowLulc] = useState(false);
+  const [showDem, setShowDem] = useState(false);
+  const [showSlope, setShowSlope] = useState(false);
+  const [showWater, setShowWater] = useState(false);
+  const [showSoil, setShowSoil] = useState(false);
 
   // Only states present in CITIES have live data. Any other state from the
   // dropdown still selects and renders the map, but in "awaiting data" mode.
@@ -288,9 +296,13 @@ export default function Dashboard() {
   const zoom = selectedDistrict?.center ? 9 : city ? city.zoom : stateView.zoom;
   const insight = city ? city.insights[parameter] : null;
   const activeParam = PARAMETERS.find((p) => p.key === parameter)!;
-  // Telangana is district-wise (per Prathyu/Binu sir), other cities use wards
+  // Telangana is district-wise (per Prathyu/Binu sir), other cities use wards.
+  // ADDED Nov 2026: every all-India state is district-wise too - only the two
+  // original metro dashboards (Ahmedabad, Mumbai) are still ward-based.
   const wardsLabel =
-    cityId === "telangana" ? "District boundaries" : "Ward boundaries";
+    cityId === "ahmedabad" || cityId === "mumbai"
+      ? "Ward boundaries"
+      : "District boundaries";
 
   // Districts are read from the same boundary file the map already uses, so a
   // state's districts appear automatically as soon as its geojson is added to
@@ -306,27 +318,37 @@ export default function Dashboard() {
     setDistricts(fallback);
 
     let cancelled = false;
-    fetch(`/geojson/wards-${cityId}.geojson`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (cancelled || !d || !Array.isArray(d.features)) return;
-        const seen = new Set<string>();
-        const list: DistrictEntry[] = [];
-        for (const f of d.features) {
-          const p = f.properties || {};
-          const name: string | undefined =
-            p.district ?? p.DISTRICT ?? p.name ?? undefined;
-          if (!name || seen.has(name)) continue;
-          seen.add(name);
-          list.push({ name, center: geomCentre(f.geometry) });
+    // ADDED Nov 2026: the per-city wards file is tried first, because
+    // Telangana's carries population and hospital counts and must keep
+    // winning. Every other state falls back to the all-India district
+    // boundaries built from the 2011 Census shapefile.
+    (async () => {
+      const load = async (url: string) => {
+        try {
+          const r = await fetch(url);
+          return r.ok ? await r.json() : null;
+        } catch {
+          return null;
         }
-        if (list.length === 0) return;
-        list.sort((a, b) => a.name.localeCompare(b.name));
-        setDistricts(list);
-      })
-      .catch(() => {
-        /* keep the provisional list */
-      });
+      };
+      const d =
+        (await load(`/geojson/wards-${cityId}.geojson`)) ??
+        (await load(`/geojson/districts/${cityId}.geojson`));
+      if (cancelled || !d || !Array.isArray(d.features)) return;
+      const seen = new Set<string>();
+      const list: DistrictEntry[] = [];
+      for (const f of d.features) {
+        const p = f.properties || {};
+        const name: string | undefined =
+          p.district ?? p.DISTRICT ?? p.name ?? undefined;
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+        list.push({ name, center: geomCentre(f.geometry) });
+      }
+      if (list.length === 0) return;
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      setDistricts(list);
+    })();
     return () => {
       cancelled = true;
     };
@@ -542,6 +564,20 @@ export default function Dashboard() {
               onToggleWards={setShowWards}
               onToggleHospitals={setShowHospitals}
               wardsLabel={wardsLabel}
+              showRivers={showRivers}
+              showRainfall={showRainfall}
+              showLulc={showLulc}
+              showDem={showDem}
+              showSlope={showSlope}
+              showWater={showWater}
+              showSoil={showSoil}
+              onToggleRivers={setShowRivers}
+              onToggleRainfall={setShowRainfall}
+              onToggleLulc={setShowLulc}
+              onToggleDem={setShowDem}
+              onToggleSlope={setShowSlope}
+              onToggleWater={setShowWater}
+              onToggleSoil={setShowSoil}
             />
           </div>
         </header>
@@ -585,6 +621,13 @@ export default function Dashboard() {
                     }}
                     showUHI={showUHI}
                     showIndex={showIndex}
+                    showRivers={showRivers}
+                    showRainfall={showRainfall}
+                    showLulc={showLulc}
+                    showDem={showDem}
+                    showSlope={showSlope}
+                    showWater={showWater}
+                    showSoil={showSoil}
                   />
                 </div>
               </div>

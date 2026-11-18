@@ -1,6 +1,12 @@
 // File: src/components/map/LayersMenu.tsx
 // "Layers" dropdown for map overlays: Buildings, Hospitals, Ward boundaries
 // (all live). Public water is pending. Multiple can be on at once.
+//
+// ADDED Nov 2026: a second group, "Terrain & environment", for the all-India
+// layers (rivers, rainfall, land cover, elevation, slope, surface water).
+// Every one of those props is OPTIONAL - a page that does not pass them (for
+// example the Flood / Landslide page before it is wired up) renders exactly
+// the same menu it did before.
 import { useState, useRef, useEffect } from "react";
 import {
   Layers,
@@ -10,6 +16,11 @@ import {
   Droplets,
   ChevronDown,
   Check,
+  Waves,
+  CloudRain,
+  Trees,
+  Mountain,
+  TrendingUp,
 } from "lucide-react";
 
 interface LayersMenuProps {
@@ -20,6 +31,21 @@ interface LayersMenuProps {
   onToggleHospitals: (v: boolean) => void;
   onToggleWards: (v: boolean) => void;
   wardsLabel?: string;
+  // ---- ADDED Nov 2026: all-India terrain & environment layers ----
+  showRivers?: boolean;
+  showRainfall?: boolean;
+  showLulc?: boolean;
+  showDem?: boolean;
+  showSlope?: boolean;
+  showWater?: boolean;
+  showSoil?: boolean;
+  onToggleRivers?: (v: boolean) => void;
+  onToggleRainfall?: (v: boolean) => void;
+  onToggleLulc?: (v: boolean) => void;
+  onToggleDem?: (v: boolean) => void;
+  onToggleSlope?: (v: boolean) => void;
+  onToggleWater?: (v: boolean) => void;
+  onToggleSoil?: (v: boolean) => void;
 }
 
 export default function LayersMenu({
@@ -30,6 +56,20 @@ export default function LayersMenu({
   onToggleHospitals,
   onToggleWards,
   wardsLabel = "Ward boundaries",
+  showRivers = false,
+  showRainfall = false,
+  showLulc = false,
+  showDem = false,
+  showSlope = false,
+  showWater = false,
+  showSoil = false,
+  onToggleRivers,
+  onToggleRainfall,
+  onToggleLulc,
+  onToggleDem,
+  onToggleSlope,
+  onToggleWater,
+  onToggleSoil,
 }: LayersMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -58,7 +98,46 @@ export default function LayersMenu({
     },
     { icon: Grid3x3, label: wardsLabel, on: showWards, toggle: onToggleWards },
   ];
-  const activeCount = items.filter((i) => i.on).length;
+
+  // ADDED Nov 2026: only the layers whose handler was actually passed in show
+  // up, so this group simply does not render on pages that have not wired it.
+  const extraItems = [
+    {
+      icon: Waves,
+      label: "Rivers & streams",
+      on: showRivers,
+      toggle: onToggleRivers,
+    },
+    {
+      icon: CloudRain,
+      label: "Rainfall (annual)",
+      on: showRainfall,
+      toggle: onToggleRainfall,
+    },
+    {
+      icon: Trees,
+      label: "Land use / land cover",
+      on: showLulc,
+      toggle: onToggleLulc,
+    },
+    { icon: Mountain, label: "Elevation (DEM)", on: showDem, toggle: onToggleDem },
+    { icon: TrendingUp, label: "Slope", on: showSlope, toggle: onToggleSlope },
+    { icon: Layers, label: "Soil texture", on: showSoil, toggle: onToggleSoil },
+    {
+      icon: Droplets,
+      label: "Surface water occurrence",
+      on: showWater,
+      toggle: onToggleWater,
+    },
+  ].filter((it) => typeof it.toggle === "function") as {
+    icon: typeof Waves;
+    label: string;
+    on: boolean;
+    toggle: (v: boolean) => void;
+  }[];
+
+  const activeCount =
+    items.filter((i) => i.on).length + extraItems.filter((i) => i.on).length;
 
   return (
     <div ref={ref} className="relative">
@@ -77,7 +156,7 @@ export default function LayersMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 z-[1200] mt-2 w-60 rounded-xl border border-white/10 bg-[#0f1a2e] p-2 shadow-2xl">
+        <div className="absolute right-0 z-[1200] mt-2 max-h-[70vh] w-60 overflow-y-auto rounded-xl border border-white/10 bg-[#0f1a2e] p-2 shadow-2xl">
           {items.map((it) => (
             <button
               key={it.label}
@@ -95,6 +174,36 @@ export default function LayersMenu({
               </span>
             </button>
           ))}
+
+          {/* ---- ADDED Nov 2026: terrain & environment group ---- */}
+          {extraItems.length > 0 && (
+            <>
+              <div className="my-1 h-px bg-white/10" />
+              <p
+                style={{ fontFamily: "var(--font-mono)" }}
+                className="px-2.5 py-1 text-[9px] uppercase tracking-widest text-slate-500"
+              >
+                Terrain &amp; environment
+              </p>
+              {extraItems.map((it) => (
+                <button
+                  key={it.label}
+                  onClick={() => it.toggle(!it.on)}
+                  className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm text-slate-200 transition hover:bg-white/5"
+                >
+                  <span className="flex items-center gap-2">
+                    <it.icon className="h-4 w-4 text-slate-300" />
+                    {it.label}
+                  </span>
+                  <span
+                    className={`grid h-4 w-4 place-items-center rounded border ${it.on ? "border-teal-400 bg-teal-400 text-slate-900" : "border-white/25"}`}
+                  >
+                    {it.on && <Check className="h-3 w-3" />}
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
 
           <div className="my-1 h-px bg-white/10" />
 

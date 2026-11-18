@@ -2,7 +2,7 @@
 // Config-driven dashboard used by Flood and Landslide. Same layout/structure as
 // the Heat & Health dashboard. Index + hotspot layers are "coming soon" until
 // the backend datasets are ready; the map, buildings, hospitals and wards work.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,7 +16,15 @@ import {
   TrendingDown,
   Minus,
 } from "lucide-react";
-import { CITIES, getCity, type Kpi, type Status } from "../data/cityData";
+// ADDED Nov 2026: the state dropdown + district list, same as the Heat page.
+import {
+  INDIAN_STATES,
+  STATE_DISTRICTS,
+  getStateView,
+  getCityByState,
+  type Kpi,
+  type Status,
+} from "../data/cityData";
 import AnimatedCounter from "../components/common/AnimatedCounter";
 import ResizableSplit from "../components/common/ResizableSplit";
 import { Wordmark, CornerLogo } from "../components/common/Brand";
@@ -180,9 +188,57 @@ function KpiModal({ kpi, onClose }: { kpi: Kpi; onClose: () => void }) {
   );
 }
 
+// ---- ADDED Nov 2026 -------------------------------------------------------
+// Rough centroid of a GeoJSON Polygon/MultiPolygon - averages its coordinates.
+// Same helper the Heat dashboard uses to fly the map to a district.
+function geomCentre(geometry: any): [number, number] | null {
+  if (!geometry) return null;
+  let lngSum = 0;
+  let latSum = 0;
+  let count = 0;
+  const walk = (coords: any) => {
+    if (typeof coords[0] === "number") {
+      lngSum += coords[0];
+      latSum += coords[1];
+      count += 1;
+      return;
+    }
+    for (const c of coords) walk(c);
+  };
+  try {
+    walk(geometry.coordinates);
+  } catch {
+    return null;
+  }
+  return count ? [latSum / count, lngSum / count] : null;
+}
+
+interface DistrictEntry {
+  name: string;
+  center: [number, number] | null;
+}
+
+// Flood/Landslide list their parameters as River, Rainfall, LULC, DEM, Slope -
+// which are exactly the layers the backend now serves. Picking one in the
+// sidebar draws it. ("river" is singular in the Flood config.)
+const PARAM_TO_LAYER: Record<string, string> = {
+  river: "rivers",
+  rivers: "rivers",
+  rainfall: "rainfall",
+  lulc: "lulc",
+  dem: "dem",
+  slope: "slope",
+  water: "water",
+  soil: "soil",
+};
+// ---------------------------------------------------------------------------
+
 export default function HazardDashboard({ config }: { config: HazardConfig }) {
   const navigate = useNavigate();
-  const [cityId, setCityId] = useState(CITIES[0].id);
+  // ADDED Nov 2026: state + district selection, replacing the fixed city list
+  const [stateName, setStateName] = useState("Telangana");
+  const [districts, setDistricts] = useState<DistrictEntry[]>([]);
+  const [activeDistrict, setActiveDistrict] = useState<string | null>(null);
   const [parameter, setParameter] = useState<string>(config.parameters[0].key);
   const [popupKpi, setPopupKpi] = useState<Kpi | null>(null);
   const [year, setYear] = useState(DEFAULT_TIMELINE.year);
@@ -196,11 +252,85 @@ export default function HazardDashboard({ config }: { config: HazardConfig }) {
   );
   const [showHotspot, setShowHotspot] = useState(false);
   const [showIndex, setShowIndex] = useState(true);
+  // ADDED Nov 2026: the same terrain & environment toggles as the Heat page
+  const [showRivers, setShowRivers] = useState(false);
+  const [showRainfall, setShowRainfall] = useState(false);
+  const [showLulc, setShowLulc] = useState(false);
+  const [showDem, setShowDem] = useState(false);
+  const [showSlope, setShowSlope] = useState(false);
+  const [showWater, setShowWater] = useState(false);
+  const [showSoil, setShowSoil] = useState(false);
 
-  const city = useMemo(() => getCity(cityId), [cityId]);
+  // ADDED Nov 2026: mirrors the Heat dashboard - states with live KPI data use
+  // their own centre/zoom, every other state still flies the map to itself.
+  const city = useMemo(() => getCityByState(stateName), [stateName]);
+  const hasData = city !== null;
+  const cityId = city ? city.id : stateName.toLowerCase().replace(/\s+/g, "-");
+  const stateView = useMemo(() => getStateView(stateName), [stateName]);
+  const selectedDistrict = districts.find((d) => d.name === activeDistrict);
+  const center = selectedDistrict?.center
+    ? selectedDistrict.center
+    : city
+      ? city.center
+      : stateView.center;
+  const zoom = selectedDistrict?.center ? 9 : city ? city.zoom : stateView.zoom;
+  const wardsLabel =
+    cityId === "ahmedabad" || cityId === "mumbai"
+      ? "Ward boundaries"
+      : "District boundaries";
+
   const insight = config.insight;
   const activeParam = config.parameters.find((p) => p.key === parameter)!;
   const HotspotIcon = config.hotspotIcon;
+
+  // ADDED Nov 2026: the sidebar parameter doubles as a layer picker, so the
+  // selected one is OR-ed with whatever the Layers menu has switched on.
+  const paramLayer = showIndex ? PARAM_TO_LAYER[parameter] : undefined;
+  const layerOn = (key: string, manual: boolean) =>
+    manual || paramLayer === key;
+
+  // ADDED Nov 2026: districts of the selected state, read from the boundary
+  // files in /public/geojson (per-city wards first, then the all-India
+  // district boundaries).
+  useEffect(() => {
+    setActiveDistrict(null);
+    const fallback: DistrictEntry[] = (STATE_DISTRICTS[stateName] ?? []).map(
+      (name) => ({ name, center: null }),
+    );
+    setDistricts(fallback);
+
+    let cancelled = false;
+    (async () => {
+      const load = async (url: string) => {
+        try {
+          const r = await fetch(url);
+          return r.ok ? await r.json() : null;
+        } catch {
+          return null;
+        }
+      };
+      const d =
+        (await load(`/geojson/wards-${cityId}.geojson`)) ??
+        (await load(`/geojson/districts/${cityId}.geojson`));
+      if (cancelled || !d || !Array.isArray(d.features)) return;
+      const seen = new Set<string>();
+      const list: DistrictEntry[] = [];
+      for (const f of d.features) {
+        const p = f.properties || {};
+        const name: string | undefined =
+          p.district ?? p.DISTRICT ?? p.name ?? undefined;
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+        list.push({ name, center: geomCentre(f.geometry) });
+      }
+      if (list.length === 0) return;
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      setDistricts(list);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cityId, stateName]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1220] text-slate-200">
@@ -210,35 +340,74 @@ export default function HazardDashboard({ config }: { config: HazardConfig }) {
           <Wordmark />
         </div>
 
-        {/* cities */}
+        {/* states - ADDED Nov 2026, replaces the fixed city list */}
         <div className="px-5 pb-3 pt-2">
           <p
             style={{ fontFamily: "var(--font-mono)" }}
             className="mb-2 text-[10px] uppercase tracking-widest text-slate-500"
           >
-            Cities
+            States
           </p>
-          <div className="space-y-1">
-            {CITIES.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setCityId(c.id)}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
-                  c.id === cityId
-                    ? "bg-amber-400/10 text-amber-200 ring-1 ring-amber-300/30"
-                    : "text-slate-300 hover:bg-white/5"
-                }`}
+          <select
+            value={stateName}
+            onChange={(e) => setStateName(e.target.value)}
+            className="w-full cursor-pointer rounded-lg border border-white/10 bg-[#0f1a2e] px-3 py-2 text-sm text-slate-200 outline-none transition hover:border-white/25 focus:border-amber-300/40"
+          >
+            {INDIAN_STATES.map((s) => (
+              <option
+                key={s.name}
+                value={s.name}
+                className="bg-[#0f1a2e] text-slate-200"
               >
-                <span>{c.name}</span>
-                <span
-                  style={{ fontFamily: "var(--font-mono)" }}
-                  className="text-[10px] text-slate-500"
-                >
-                  {c.state}
-                </span>
-              </button>
+                {s.name}
+              </option>
             ))}
+          </select>
+        </div>
+
+        {/* districts of the selected state - ADDED Nov 2026 */}
+        <div className="px-5 pb-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p
+              style={{ fontFamily: "var(--font-mono)" }}
+              className="text-[10px] uppercase tracking-widest text-slate-500"
+            >
+              Districts
+            </p>
+            {districts.length > 0 && (
+              <span
+                style={{ fontFamily: "var(--font-mono)" }}
+                className="text-[10px] text-slate-500"
+              >
+                {districts.length}
+              </span>
+            )}
           </div>
+
+          {districts.length === 0 ? (
+            <p className="px-1 text-[11px] leading-relaxed text-slate-500">
+              District data for {stateName} is not available yet.
+            </p>
+          ) : (
+            <div className="max-h-56 space-y-0.5 overflow-y-auto pr-1">
+              {districts.map((d) => {
+                const active = d.name === activeDistrict;
+                return (
+                  <button
+                    key={d.name}
+                    onClick={() => setActiveDistrict(active ? null : d.name)}
+                    className={`block w-full truncate rounded-md px-2.5 py-1.5 text-left text-[13px] transition ${
+                      active
+                        ? "bg-amber-400/10 text-amber-200 ring-1 ring-amber-300/30"
+                        : "text-slate-300 hover:bg-white/5"
+                    }`}
+                  >
+                    {d.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* indices */}
@@ -331,7 +500,7 @@ export default function HazardDashboard({ config }: { config: HazardConfig }) {
               style={{ fontFamily: "var(--font-display)" }}
               className="text-lg font-semibold text-slate-50"
             >
-              {city.name}{" "}
+              {stateName}{" "}
               <span className="text-slate-500">
                 / {config.title} · {activeParam.label}
               </span>
@@ -340,8 +509,8 @@ export default function HazardDashboard({ config }: { config: HazardConfig }) {
               style={{ fontFamily: "var(--font-mono)" }}
               className="text-[11px] text-slate-500"
             >
-              {city.center[0].toFixed(3)}°N, {city.center[1].toFixed(3)}°E ·
-              preview
+              {center[0].toFixed(3)}°N, {center[1].toFixed(3)}°E ·{" "}
+              {hasData ? "live" : "preview"}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -371,6 +540,21 @@ export default function HazardDashboard({ config }: { config: HazardConfig }) {
               onToggleBuildings={setShowBuildings}
               onToggleWards={setShowWards}
               onToggleHospitals={setShowHospitals}
+              wardsLabel={wardsLabel}
+              showRivers={showRivers}
+              showRainfall={showRainfall}
+              showLulc={showLulc}
+              showDem={showDem}
+              showSlope={showSlope}
+              showWater={showWater}
+              showSoil={showSoil}
+              onToggleRivers={setShowRivers}
+              onToggleRainfall={setShowRainfall}
+              onToggleLulc={setShowLulc}
+              onToggleDem={setShowDem}
+              onToggleSlope={setShowSlope}
+              onToggleWater={setShowWater}
+              onToggleSoil={setShowSoil}
             />
           </div>
         </header>
@@ -383,22 +567,24 @@ export default function HazardDashboard({ config }: { config: HazardConfig }) {
             defaultRight={420}
             left={
               <div className="flex flex-col gap-4 pr-4">
-                <div className="grid grid-cols-4 gap-3">
-                  {city.kpis.slice(0, 8).map((k, i) => (
-                    <KpiCard
-                      key={k.key + cityId}
-                      kpi={k}
-                      index={i}
-                      onOpen={setPopupKpi}
-                    />
-                  ))}
-                </div>
+                {city && (
+                  <div className="grid grid-cols-4 gap-3">
+                    {city.kpis.slice(0, 8).map((k, i) => (
+                      <KpiCard
+                        key={k.key + cityId}
+                        kpi={k}
+                        index={i}
+                        onOpen={setPopupKpi}
+                      />
+                    ))}
+                  </div>
+                )}
                 <div className="relative h-[820px] overflow-hidden rounded-2xl border border-white/10">
                   <MapView
                     parameter={parameter}
-                    center={city.center}
-                    zoom={city.zoom}
-                    cityId={city.id}
+                    center={center}
+                    zoom={zoom}
+                    cityId={cityId}
                     year={year}
                     month={month}
                     showBuildings={showBuildings}
@@ -412,6 +598,13 @@ export default function HazardDashboard({ config }: { config: HazardConfig }) {
                     showIndex={showIndex}
                     hotspotLabel={config.hotspotLabel}
                     comingSoon={true}
+                    showRivers={layerOn("rivers", showRivers)}
+                    showRainfall={layerOn("rainfall", showRainfall)}
+                    showLulc={layerOn("lulc", showLulc)}
+                    showDem={layerOn("dem", showDem)}
+                    showSlope={layerOn("slope", showSlope)}
+                    showWater={layerOn("water", showWater)}
+                    showSoil={layerOn("soil", showSoil)}
                   />
                 </div>
               </div>
@@ -490,7 +683,12 @@ export default function HazardDashboard({ config }: { config: HazardConfig }) {
                     </span>
                   </div>
                   <div className="space-y-2.5">
-                    {city.alerts.map((a) => {
+                    {!city && (
+                      <p className="text-xs leading-relaxed text-slate-500">
+                        No alerts yet for {stateName}.
+                      </p>
+                    )}
+                    {(city?.alerts ?? []).map((a) => {
                       const s = STATUS_STYLES[a.severity];
                       return (
                         <div

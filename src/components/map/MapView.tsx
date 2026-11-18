@@ -27,6 +27,86 @@ import "leaflet/dist/leaflet.css";
 
 const DEFAULT_CENTER: [number, number] = [23.0225, 72.5714];
 
+// ---- ADDED Nov 2026: all-India terrain & environment layers ----------------
+// Each one is a single backend call: /api/layer/<key>?state=<cityId>
+// They are drawn UNDER the index/UHI tiles so they never hide the heat layer.
+// Unlike the index layers these have data for every state in the country, so
+// they are deliberately NOT gated behind `comingSoon`.
+const EXTRA_KEYS = [
+  "dem",
+  "slope",
+  "lulc",
+  "rainfall",
+  "water",
+  "soil",
+  "rivers",
+] as const;
+type ExtraKey = (typeof EXTRA_KEYS)[number];
+
+const EXTRA_META: Record<
+  ExtraKey,
+  { label: string; z: number; ramp: string[]; scale: string }
+> = {
+  dem: {
+    label: "Elevation",
+    z: 300,
+    ramp: ["#1a9850", "#fee08b", "#fdae61", "#8c510a", "#ffffff"],
+    scale: "0 - 3000 m",
+  },
+  slope: {
+    label: "Slope",
+    z: 310,
+    ramp: ["#2c7bb6", "#1a9850", "#ffffbf", "#fdae61", "#d7191c"],
+    scale: "0 - 45\u00b0",
+  },
+  lulc: {
+    label: "Land cover",
+    z: 320,
+    ramp: [
+      "#006400",
+      "#ffbb22",
+      "#ffff4c",
+      "#f096ff",
+      "#fa0000",
+      "#b4b4b4",
+      "#0064c8",
+    ],
+    scale: "tree / shrub / grass / crop / built / bare / water",
+  },
+  rainfall: {
+    label: "Rainfall",
+    z: 330,
+    ramp: ["#ffffcc", "#a1dab4", "#41b6c4", "#2c7fb8", "#253494"],
+    scale: "100 - 3000 mm / yr",
+  },
+  water: {
+    label: "Surface water",
+    z: 340,
+    ramp: ["#ffffff", "#ffbbbb", "#0000ff"],
+    scale: "0 - 100% of the time (1984-2021)",
+  },
+  soil: {
+    label: "Soil texture",
+    z: 350,
+    ramp: [
+      "#d5c36b",
+      "#b96947",
+      "#ae868f",
+      "#368f20",
+      "#ffd557",
+      "#fff72e",
+      "#ff005b",
+    ],
+    scale: "clay \u2192 loam \u2192 sand (USDA classes)",
+  },
+  rivers: {
+    label: "Rivers & streams",
+    z: 460,
+    ramp: ["#1d6fb8", "#1d6fb8"],
+    scale: "stream network",
+  },
+};
+
 interface MapViewProps {
   parameter?: string;
   center?: [number, number];
@@ -41,6 +121,14 @@ interface MapViewProps {
   showIndex?: boolean;
   hotspotLabel?: string;
   comingSoon?: boolean;
+  // ---- ADDED Nov 2026: all-India terrain & environment layers ----
+  showRivers?: boolean;
+  showRainfall?: boolean;
+  showLulc?: boolean;
+  showDem?: boolean;
+  showSlope?: boolean;
+  showWater?: boolean;
+  showSoil?: boolean;
   onSelectFeature?: (
     f: { type: "hospital" | "ward"; props: Record<string, any> } | null,
   ) => void;
@@ -76,6 +164,14 @@ export default function MapView({
   showIndex = true,
   hotspotLabel = "UHI",
   comingSoon = false,
+  // ---- ADDED Nov 2026 ----
+  showRivers = false,
+  showRainfall = false,
+  showLulc = false,
+  showDem = false,
+  showSlope = false,
+  showWater = false,
+  showSoil = false,
   onSelectFeature,
 }: MapViewProps) {
   const [basemapId, setBasemapId] = useState(DEFAULT_BASEMAP.id);
@@ -95,6 +191,23 @@ export default function MapView({
     string,
     number
   > | null>(null);
+  // ---- ADDED Nov 2026: tile urls + a shared opacity for the extra layers ----
+  const [extraUrls, setExtraUrls] = useState<Partial<Record<ExtraKey, string>>>(
+    {},
+  );
+  const [extraOpacity, setExtraOpacity] = useState(0.8);
+
+  const extraOn: Record<ExtraKey, boolean> = {
+    dem: showDem,
+    slope: showSlope,
+    lulc: showLulc,
+    rainfall: showRainfall,
+    water: showWater,
+    soil: showSoil,
+    rivers: showRivers,
+  };
+  const activeExtras = EXTRA_KEYS.filter((k) => extraOn[k]);
+  const activeExtrasKey = activeExtras.join(",");
 
   const basemap = BASEMAPS.find((b) => b.id === basemapId) ?? DEFAULT_BASEMAP;
 
@@ -188,14 +301,28 @@ export default function MapView({
       return;
     }
     let cancelled = false;
-    fetch(`/geojson/wards-${cityId}.geojson`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!cancelled) setWards(d);
-      })
-      .catch(() => {
-        if (!cancelled) setWards(null);
-      });
+    // ADDED Nov 2026: try the existing per-city wards file first (Telangana's
+    // carries population + hospital counts, so it must keep winning), then
+    // fall back to the all-India district boundaries added from the 2011
+    // Census shapefile.
+    (async () => {
+      let data: any = null;
+      try {
+        const r1 = await fetch(`/geojson/wards-${cityId}.geojson`);
+        if (r1.ok) data = await r1.json();
+      } catch {
+        /* fall through to the districts file */
+      }
+      if (!data) {
+        try {
+          const r2 = await fetch(`/geojson/districts/${cityId}.geojson`);
+          if (r2.ok) data = await r2.json();
+        } catch {
+          data = null;
+        }
+      }
+      if (!cancelled) setWards(data);
+    })();
     return () => {
       cancelled = true;
     };
@@ -247,6 +374,33 @@ export default function MapView({
     };
   }, [cityId]);
 
+  // ---- ADDED Nov 2026: drop cached tile urls whenever the state changes ----
+  useEffect(() => {
+    setExtraUrls({});
+  }, [cityId]);
+
+  // ---- ADDED Nov 2026: fetch a tile url for each switched-on extra layer ----
+  // The backend caches these for 24h, so re-requesting one that is already on
+  // is effectively free and keeps this effect free of stale-closure bugs.
+  useEffect(() => {
+    if (activeExtras.length === 0) return;
+    let cancelled = false;
+    activeExtras.forEach((k) => {
+      fetch(`${API_BASE}/api/layer/${k}?state=${cityId}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (!cancelled && d && d.url)
+            setExtraUrls((prev) => ({ ...prev, [k]: d.url }));
+        })
+        .catch(() => {
+          /* layer just stays off */
+        });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeExtrasKey, cityId]);
+
   return (
     <div className="relative h-full w-full">
       <MapContainer
@@ -263,6 +417,20 @@ export default function MapView({
           {...(basemap.subdomains ? { subdomains: basemap.subdomains } : {})}
           maxZoom={basemap.maxZoom ?? 19}
         />
+
+        {/* ---- ADDED Nov 2026: terrain & environment tiles (under the index) ---- */}
+        {activeExtras.map((k) =>
+          extraUrls[k] ? (
+            <TileLayer
+              key={`extra-${k}-${cityId}`}
+              url={extraUrls[k] as string}
+              attribution="Earth Engine"
+              opacity={k === "rivers" ? 1 : extraOpacity}
+              zIndex={EXTRA_META[k].z}
+              maxZoom={18}
+            />
+          ) : null,
+        )}
 
         {!comingSoon && showIndex && status === "ok" && tileUrl && (
           <TileLayer
@@ -436,8 +604,64 @@ export default function MapView({
         </div>
       )}
 
+      {/* ---- ADDED Nov 2026: one shared opacity slider for the extra layers ---- */}
+      {activeExtras.some((k) => k !== "rivers") && (
+        <div className="absolute bottom-6 left-4 z-[1000] w-56 rounded-xl border border-white/10 bg-[#0B1220]/80 p-3 shadow-xl backdrop-blur-md">
+          <div className="mb-2 flex items-center justify-between">
+            <span
+              style={{ fontFamily: "var(--font-mono)" }}
+              className="text-[10px] uppercase tracking-wider text-slate-400"
+            >
+              Terrain opacity
+            </span>
+            <span
+              style={{ fontFamily: "var(--font-mono)" }}
+              className="text-[11px] text-slate-300"
+            >
+              {Math.round(extraOpacity * 100)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(extraOpacity * 100)}
+            onChange={(e) => setExtraOpacity(Number(e.target.value) / 100)}
+            className="h-1 w-full cursor-pointer appearance-none rounded-full bg-white/15 accent-sky-400"
+          />
+          <div className="mt-2.5 space-y-1.5">
+            {activeExtras.map((k) => (
+              <div key={`lg-${k}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-medium text-slate-200">
+                    {EXTRA_META[k].label}
+                  </span>
+                </div>
+                <div className="mt-0.5 flex h-1.5 overflow-hidden rounded-full">
+                  {EXTRA_META[k].ramp.map((c, i) => (
+                    <span
+                      key={i}
+                      style={{ background: c }}
+                      className="h-full flex-1"
+                    />
+                  ))}
+                </div>
+                <p
+                  style={{ fontFamily: "var(--font-mono)" }}
+                  className="mt-0.5 text-[9px] leading-tight text-slate-500"
+                >
+                  {EXTRA_META[k].scale}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* coming soon badge */}
-      {comingSoon && (
+      {/* ADDED Nov 2026: suppressed once a terrain/environment layer is on -
+          those have real nationwide data, so the badge would be misleading. */}
+      {comingSoon && activeExtras.length === 0 && (
         <div className="pointer-events-none absolute left-1/2 top-1/2 z-[1000] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-white/10 bg-[#0B1220]/85 px-4 py-3 text-center shadow-2xl backdrop-blur-md">
           <p className="text-sm font-medium text-slate-100">
             Live data layers coming soon
