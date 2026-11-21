@@ -23,6 +23,20 @@ import { BASEMAPS, DEFAULT_BASEMAP } from "../../data/basemaps";
 import { monthLabel, DEFAULT_TIMELINE } from "../../data/geeTimeline";
 import { API_BASE } from "../../config";
 import type { ParamKey } from "../../data/legendRamps";
+
+function lookupStat(
+  table: Record<string, number> | null,
+  name: any,
+): number | undefined {
+  if (!table || name == null) return undefined;
+  const key = String(name);
+  if (table[key] != null) return table[key];
+  const lower = key.toLowerCase();
+  for (const k of Object.keys(table)) {
+    if (k.toLowerCase() === lower) return table[k];
+  }
+  return undefined;
+}
 import "leaflet/dist/leaflet.css";
 
 const DEFAULT_CENTER: [number, number] = [23.0225, 72.5714];
@@ -191,6 +205,10 @@ export default function MapView({
     string,
     number
   > | null>(null);
+  const [districtPopulation, setDistrictPopulation] = useState<Record<
+    string,
+    number
+  > | null>(null);
   // ---- ADDED Nov 2026: tile urls + a shared opacity for the extra layers ----
   const [extraUrls, setExtraUrls] = useState<Partial<Record<ExtraKey, string>>>(
     {},
@@ -332,14 +350,16 @@ export default function MapView({
   // Ahmedabad/Mumbai's ward popups don't show this field, so no need to fetch
   // it for them.
   useEffect(() => {
-    if (cityId !== "telangana") {
+    if (cityId === "ahmedabad" || cityId === "mumbai") {
       setDistrictStats(null);
       return;
     }
     let cancelled = false;
-    fetch(
-      `${API_BASE}/api/district-stats?city=${cityId}&year=${year}&month=${month}`,
-    )
+    const url =
+      cityId === "telangana"
+        ? `${API_BASE}/api/district-stats?city=${cityId}&year=${year}&month=${month}`
+        : `${API_BASE}/api/state-district-stats?state=${cityId}&year=${year}&month=${month}`;
+    fetch(url)
       .then((r) => r.json())
       .then((d) => {
         if (!cancelled && d && d.stats) setDistrictStats(d.stats);
@@ -356,18 +376,41 @@ export default function MapView({
   // No year/month dependency - building footprints don't change over time,
   // so this only needs to fetch once per city.
   useEffect(() => {
-    if (cityId !== "telangana") {
+    if (cityId === "ahmedabad" || cityId === "mumbai") {
       setBuildingCounts(null);
       return;
     }
     let cancelled = false;
-    fetch(`${API_BASE}/api/district-building-counts?city=${cityId}`)
+    const url =
+      cityId === "telangana"
+        ? `${API_BASE}/api/district-building-counts?city=${cityId}`
+        : `${API_BASE}/api/state-district-building-counts?state=${cityId}`;
+    fetch(url)
       .then((r) => r.json())
       .then((d) => {
         if (!cancelled && d && d.counts) setBuildingCounts(d.counts);
       })
       .catch(() => {
         if (!cancelled) setBuildingCounts(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cityId]);
+
+  useEffect(() => {
+    if (cityId === "ahmedabad" || cityId === "mumbai") {
+      setDistrictPopulation(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`${API_BASE}/api/state-district-population?state=${cityId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d && d.population) setDistrictPopulation(d.population);
+      })
+      .catch(() => {
+        if (!cancelled) setDistrictPopulation(null);
       });
     return () => {
       cancelled = true;
@@ -487,19 +530,18 @@ export default function MapView({
               layer.bindTooltip(label, { sticky: true, direction: "top" });
               layer.on("click", (e: any) => {
                 if (e?.originalEvent) L.DomEvent.stop(e.originalEvent);
-                const maxLst =
-                  p.district != null && districtStats
-                    ? districtStats[p.district]
-                    : undefined;
-                const buildingCount =
-                  p.district != null && buildingCounts
-                    ? buildingCounts[p.district]
-                    : undefined;
+                const maxLst = lookupStat(districtStats, p.district);
+                const buildingCount = lookupStat(buildingCounts, p.district);
+                const population = lookupStat(districtPopulation, p.district);
                 const enriched = {
                   ...p,
                   ...(maxLst != null ? { max_lst: maxLst } : {}),
                   ...(buildingCount != null
                     ? { building_count: buildingCount }
+                    : {}),
+                  ...(population != null &&
+                  (p.population == null || Number(p.population) <= 0)
+                    ? { population }
                     : {}),
                 };
                 onSelectFeature &&
